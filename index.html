@@ -3,6 +3,11 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.6.1 — 22 ottobre 2026
+    - Fix "Google sovraccarico" in Svuota frigo / Cosa cucino?: ripiego
+      senza ricerca web, cambio automatico di modello, lettura idee più
+      tollerante, test chiave reale e registro richieste AI.
+
   v1.6.0 — 22 ottobre 2026
     - "Cosa cucino?": domande guidate → proposte → + per salvarle nel
       ricettario (con esigenze degli ospiti).
@@ -488,8 +493,13 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.6.1';
 const CHANGELOG = [
+  { v: '1.6.1', d: '22 ottobre 2026', items: [
+    'Corretto Svuota frigo e Cosa cucino? che rispondevano sempre "Google sovraccarico": se la ricerca web non è permessa dalla chiave gratuita l\'app ora riprova senza, e se un modello AI è intasato passa da sola al successivo.',
+    'Le idee vengono lette anche quando l\'AI le restituisce in un formato un po\' diverso.',
+    '"Salva e prova" in Impostazioni ora fa una vera richiesta all\'AI e dice quale modello risponde; c\'è anche l\'elenco delle ultime richieste con gli eventuali errori di Google.'
+  ]},
   { v: '1.6.0', d: '22 ottobre 2026', items: [
     'Nuova funzione "Cosa cucino?": rispondi a 5 domande (portata, occasione, persone e tempo, richieste particolari, allergie e salute) e ricevi 3, 5 o 8 proposte, con "Altre proposte" per rifare la ricerca.',
     'Tasto + su ogni proposta: la ricetta viene scritta per intero nel formato dell\'app e salvata nel ricettario, già con le esigenze degli ospiti.',
@@ -851,60 +861,103 @@ const AI = {
     ok.sort((a, b) => ver(b) - ver(a) || (/preview|exp/.test(a) ? 1 : 0) - (/preview|exp/.test(b) ? 1 : 0) || a.length - b.length);
     return ok[0] || list.find((n) => /flash/.test(n)) || 'gemini-2.5-flash';
   },
-  async model() {
+  /* Modelli da provare, in ordine: quello scelto (o l'ultimo che ha funzionato), poi gli altri "flash", poi i "lite" */
+  async candidates() {
     const chosen = settings.get('gemini_model', 'auto');
-    if (chosen && chosen !== 'auto') return chosen;
-    try { return this.pickBest(await this.models()); } catch { return 'gemini-2.5-flash'; }
+    let list = [];
+    try { list = await this.models(); } catch {}
+    const ver = (n) => { const m = n.match(/gemini-(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : 0; };
+    const usable = list.filter((n) => /^gemini-/.test(n) && /flash/.test(n) && !/(image|tts|audio|live|embed|thinking|8b|vision|robotics|computer)/.test(n));
+    const score = (n) => ver(n) * 10 - (/lite/.test(n) ? 50 : 0) - (/preview|exp/.test(n) ? 3 : 0);
+    usable.sort((a, b) => score(b) - score(a));
+    const out = [];
+    if (chosen && chosen !== 'auto') out.push(chosen);
+    const good = settings.get('gemini_working', '');
+    if (good && (!list.length || list.includes(good))) out.push(good);
+    out.push(...usable, 'gemini-2.5-flash', 'gemini-2.5-flash-lite');
+    return [...new Set(out)].slice(0, 6);
   },
+  async model() { return (await this.candidates())[0]; },
   errMsg(status, j) {
     const m = (j && j.error && j.error.message) || '';
     if (status === 400 && /api key/i.test(m)) return 'La chiave AI non è valida: controllala in Impostazioni.';
     if (status === 403) return 'La chiave AI non ha i permessi (o è stata disattivata). Controllala in Impostazioni.';
-    if (status === 429) return 'Hai raggiunto il limite gratuito di richieste per ora: aspetta un minuto e riprova.';
-    if (status >= 500) return 'Il servizio AI di Google è momentaneamente sovraccarico: riprova tra poco.';
+    if (status === 429) return /limit:\s*0\b/.test(m) ? 'Questo modello non è incluso nel piano gratuito.' : 'Hai raggiunto il limite gratuito di richieste per ora: aspetta un minuto e riprova.';
+    if (status >= 500) return 'Il servizio AI di Google non risponde in questo momento.';
     return 'Errore AI (' + status + '): ' + (m || 'risposta non valida');
   },
-  /* parts: [{text}|{inlineData}|{fileData}] — tools: ['google_search'|'url_context'] */
-  async generate({ parts, system, tools = [], json = true, temperature = 0.4, _retry = 0 }) {
-    if (!this.has()) throw Object.assign(new Error('Serve la chiave AI gratuita: inseriscila in Impostazioni.'), { code: 'nokey' });
-    const model = await this.model();
-    const body = { contents: [{ role: 'user', parts }], generationConfig: { temperature } };
-    if (system) body.systemInstruction = { parts: [{ text: system }] };
-    if (tools.length) body.tools = tools.map((t) => ({ [t]: {} }));
-    else if (json) body.generationConfig.responseMimeType = 'application/json';
+  log(entry) { const l = settings.get('ai_log', []); l.unshift(Object.assign({ t: Date.now() }, entry)); settings.set('ai_log', l.slice(0, 12)); },
+  async call(model, body) {
     const r = await fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(this.key()), 150000, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-    });
+    }).catch((e) => ({ ok: false, status: 0, json: async () => ({ error: { message: e.name === 'AbortError' ? 'tempo scaduto' : 'rete non raggiungibile' } }) }));
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      const msg = (j.error && j.error.message) || '';
-      if (r.status === 404 && !_retry) { settings.set('gemini_models', null); if (settings.get('gemini_model', 'auto') !== 'auto') settings.set('gemini_model', 'auto'); return this.generate({ parts, system, tools, json, temperature, _retry: 1 }); }
-      if (r.status === 503 && _retry < 2) { await sleep(2500); return this.generate({ parts, system, tools, json, temperature, _retry: _retry + 1 }); }
-      const e = new Error(this.errMsg(r.status, j)); e.status = r.status; e.raw = msg;
-      e.toolProblem = tools.length > 0 && [400, 403, 429].includes(r.status);
-      throw e;
-    }
-    const cand = (j.candidates || [])[0] || {};
-    const text = ((cand.content && cand.content.parts) || []).map((p) => p.text || '').join('');
-    if (!text) throw new Error(cand.finishReason === 'SAFETY' ? 'L\'AI ha rifiutato questo contenuto.' : 'L\'AI non ha restituito nulla, riprova.');
-    const sources = ((cand.groundingMetadata && cand.groundingMetadata.groundingChunks) || []).map((c) => c.web).filter(Boolean);
-    return { text, sources, data: json ? parseJsonLoose(text) : null };
+    return { ok: r.ok, status: r.status, j, msg: (j.error && j.error.message) || '' };
   },
-  /* Prova con gli strumenti web; se la chiave gratuita non li permette, riprova senza */
-  async generateWithFallback(opts) {
-    try { return Object.assign(await this.generate(opts), { usedTools: true }); }
-    catch (e) {
-      if (!e.toolProblem) throw e;
-      return Object.assign(await this.generate(Object.assign({}, opts, { tools: [] })), { usedTools: false });
+  /* parts: [{text}|{inlineData}|{fileData}] — tools: ['google_search'|'url_context']
+     Se un modello è sovraccarico o non disponibile prova il successivo; se gli strumenti web non sono permessi riprova senza. */
+  async generate({ parts, system, tools = [], json = true, temperature = 0.4 }) {
+    if (!this.has()) throw Object.assign(new Error('Serve la chiave AI gratuita: inseriscila in Impostazioni.'), { code: 'nokey' });
+    const models = await this.candidates();
+    let useTools = tools.slice(); let last = null; const tried = [];
+    for (const model of models) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const body = { contents: [{ role: 'user', parts }], generationConfig: { temperature } };
+        if (system) body.systemInstruction = { parts: [{ text: system }] };
+        if (useTools.length) body.tools = useTools.map((t) => ({ [t]: {} }));
+        else if (json) body.generationConfig.responseMimeType = 'application/json';
+        const res = await this.call(model, body);
+        if (res.ok) {
+          const cand = (res.j.candidates || [])[0] || {};
+          const text = ((cand.content && cand.content.parts) || []).filter((p) => !p.thought).map((p) => p.text || '').join('');
+          if (!text) {
+            last = Object.assign(new Error(cand.finishReason === 'SAFETY' ? 'L\'AI ha rifiutato questo contenuto.' : 'L\'AI non ha restituito nulla.'), { status: 200, raw: cand.finishReason || '' });
+            if (cand.finishReason === 'SAFETY') throw last;
+            break; // prova il modello successivo
+          }
+          let data = null;
+          if (json) { try { data = parseJsonLoose(text); } catch (e) { last = Object.assign(e, { status: 200, raw: text.slice(0, 120) }); if (attempt < 1) continue; break; } }
+          settings.set('gemini_working', model);
+          this.log({ model, ok: true, tools: useTools.join(',') });
+          const sources = ((cand.groundingMetadata && cand.groundingMetadata.groundingChunks) || []).map((c) => c.web).filter(Boolean);
+          return { text, sources, data, model, usedTools: useTools.length > 0 };
+        }
+        tried.push(model + ' (' + (res.status || 'rete') + ')');
+        this.log({ model, ok: false, status: res.status, msg: res.msg.slice(0, 160), tools: useTools.join(',') });
+        last = Object.assign(new Error(this.errMsg(res.status, res.j)), { status: res.status, raw: res.msg });
+        if (res.status === 400 && /api key/i.test(res.msg)) throw last;
+        if (res.status === 403) throw last;
+        // strumenti web non permessi (succede col piano gratuito): riprova subito senza
+        if (useTools.length && res.status !== 0 && !(res.status === 429 && !/search|ground|tool|url/i.test(res.msg) && !/limit:\s*0\b/.test(res.msg))) { useTools = []; attempt--; continue; }
+        if ((res.status === 503 || res.status === 500 || res.status === 0) && attempt < 1) { await sleep(1500 * (attempt + 1)); continue; }
+        break; // 404, 429, 5xx ripetuti → modello successivo
+      }
     }
-  }
+    if (last && tried.length) last.message += ' Ho provato: ' + [...new Set(tried)].slice(0, 4).join(', ') + '.';
+    throw last || new Error('L\'AI non ha risposto, riprova.');
+  },
+  /* compatibilità: gli strumenti web vengono già tolti da generate() se non disponibili */
+  async generateWithFallback(opts) { return this.generate(opts); }
 };
+function pickList(data, keys) {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== 'object') return [];
+  for (const k of keys) if (Array.isArray(data[k])) return data[k];
+  const any = Object.values(data).find((v) => Array.isArray(v) && v.length && typeof v[0] === 'object'); return any || [];
+}
+function normIdea(x) {
+  if (!x || typeof x !== 'object') return null;
+  const title = x.title || x.titolo || x.nome || x.name; if (!title) return null;
+  return Object.assign({}, x, { title, description: x.description || x.descrizione || '', minutes: x.minutes || x.minuti || x.tempo, difficulty: x.difficulty || x.difficolta || x.difficoltà, missing: x.missing || x.mancanti || [], why: x.why || x.perche || x.perché || '', course: x.course || x.portata || x.category || '' });
+}
 function parseJsonLoose(t) {
   if (!t) return null;
   let s = t.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
   try { return JSON.parse(s); } catch {}
   const a = s.indexOf('{'), b = s.lastIndexOf('}');
   if (a > -1 && b > a) { try { return JSON.parse(s.slice(a, b + 1)); } catch {} }
+  const c = s.indexOf('['), d = s.lastIndexOf(']');
+  if (c > -1 && d > c) { try { return JSON.parse(s.slice(c, d + 1)); } catch {} }
   throw new Error('Non sono riuscito a leggere la risposta dell\'AI: riprova.');
 }
 
@@ -1255,7 +1308,7 @@ async function fridgeIdeas(q, exclude) {
   ].filter(Boolean).join('\n');
   const res = await AI.generateWithFallback({ system: FRIDGE_RULES, tools: ['google_search'], parts: [{ text: prompt }], temperature: 0.9 });
   const data = res.data || {};
-  return { ideas: (data.ideas || []).filter((i) => i && i.title), sources: res.sources || [], web: res.usedTools };
+  return { ideas: pickList(data, ['ideas', 'idee', 'proposte', 'ricette', 'recipes']).map(normIdea).filter(Boolean), sources: res.sources || [], web: res.usedTools };
 }
 async function fridgeRecipe(idea, q) {
   const text = `Scrivi la ricetta completa di "${idea.title}" (${idea.description || ''}).
@@ -2222,9 +2275,9 @@ async function wzSearch(more) {
   w.step = WZ_STEPS.length; w.loading = true; w.error = ''; drawWzResults($('#app'));
   try {
     const res = await AI.generate({ system: WZ_RULES, parts: [{ text: wzPrompt(w) }], temperature: 0.9 });
-    w.ideas = ((res.data && res.data.ideas) || []).filter((x) => x && x.title);
+    w.ideas = pickList(res.data, ['ideas', 'idee', 'proposte', 'ricette', 'recipes']).map(normIdea).filter(Boolean);
     if (!w.ideas.length) throw new Error('Nessuna proposta, riprova cambiando qualche risposta.');
-  } catch (e) { w.error = e.message; }
+  } catch (e) { w.error = e.message + (e.raw ? ' — Dettaglio da Google: ' + String(e.raw).slice(0, 200) : ''); }
   w.loading = false; drawWzResults($('#app'));
 }
 function drawWzResults(app) {
@@ -2373,7 +2426,7 @@ async function frSearch(more) {
     if (!out.ideas.length) throw new Error('Nessuna idea trovata, riprova cambiando qualcosa.');
     drawIdeas();
   } catch (e) {
-    $('#frRes').innerHTML = `<div class="notice"><b>Ricerca non riuscita.</b> ${esc(e.message)}</div>`;
+    $('#frRes').innerHTML = `<div class="notice"><b>Ricerca non riuscita.</b> ${esc(e.message)}${e.raw ? `<div class="small dim" style="margin-top:4px">Dettaglio da Google: ${esc(String(e.raw).slice(0, 200))}</div>` : ''}<div style="margin-top:8px"><button class="btn sm" data-act="fr-go">${ic('refresh')} Riprova</button></div></div>`;
   }
 }
 
@@ -2511,6 +2564,7 @@ function renderSettings(app) {
     <div id="keyOut" class="small"></div>
     <div><label class="f">Modello AI</label><select id="modelSel"><option value="auto">Automatico (il migliore disponibile)</option>${model !== 'auto' ? `<option value="${esc(model)}" selected>${esc(model)}</option>` : ''}</select></div>
     <p class="small dim" style="margin:0">La chiave resta solo su questo dispositivo: su ogni telefono o PC va inserita una volta.</p>
+    <details><summary class="small" style="cursor:pointer;font-weight:600">Ultime richieste all'AI (per capire cosa non va)</summary><div id="aiLog" style="margin-top:6px"></div></details>
   </div>
 
   <div class="card stack" style="margin-top:16px">
@@ -2552,7 +2606,7 @@ function renderSettings(app) {
     <p class="small dim" style="margin-top:12px">In Cucina con Paolo · un progetto GPverse</p>
   </div>`;
   $('#bkIn').addEventListener('change', importBackup);
-  drawUpdBoxes();
+  drawUpdBoxes(); drawAiLog();
   $('#kcalIn').addEventListener('change', (e) => { const v = Math.round(+e.target.value); if (v >= 1000 && v <= 5000) { settings.set('kcal_ref', v); toast('Fabbisogno: ' + v + ' kcal'); } else e.target.value = kcalRef(); });
   $('#autoNutri').addEventListener('change', (e) => settings.set('auto_nutri', e.target.checked));
   $('#defPpl').addEventListener('change', (e) => { settings.set('default_people', +e.target.value); S.view = {}; toast(+e.target.value ? 'Le ricette si apriranno per ' + e.target.value : 'Dosi come scritte nella ricetta'); });
@@ -2570,12 +2624,19 @@ async function fillModels() {
 }
 async function testKey() {
   const out = $('#keyOut');
-  out.innerHTML = '<span class="dim">Provo la chiave…</span>';
+  out.innerHTML = '<span class="dim">Provo la chiave con una richiesta vera…</span>';
   try {
-    const list = await AI.models(true);
-    out.innerHTML = `<span style="color:var(--ok);font-weight:600">✓ Chiave funzionante.</span> Userò <b>${esc(AI.pickBest(list))}</b>.`;
+    await AI.models(true);
+    const res = await AI.generate({ parts: [{ text: 'Rispondi solo con {"ok": true}' }], temperature: 0 });
+    out.innerHTML = `<span style="color:var(--ok);font-weight:600">✓ Chiave funzionante.</span> Risponde il modello <b>${esc(res.model)}</b>.`;
     fillModels();
-  } catch (e) { out.innerHTML = `<span style="color:var(--bad);font-weight:600">✗ ${esc(e.message)}</span>`; }
+  } catch (e) { out.innerHTML = `<span style="color:var(--bad);font-weight:600">✗ ${esc(e.message)}</span>${e.raw ? `<div class="small dim">Dettaglio da Google: ${esc(e.raw.slice(0, 200))}</div>` : ''}`; }
+  drawAiLog();
+}
+function drawAiLog() {
+  const el = $('#aiLog'); if (!el) return;
+  const l = settings.get('ai_log', []);
+  el.innerHTML = l.length ? `<ul class="log small">${l.map((x) => `<li>${new Date(x.t).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} · <b>${esc(x.model)}</b>${x.tools ? ' + ' + esc(x.tools) : ''} · ${x.ok ? '<span style="color:var(--ok)">ok</span>' : `<span style="color:var(--bad)">errore ${esc(x.status)}</span> <span class="dim">${esc(x.msg || '')}</span>`}</li>`).join('')}</ul>` : '<p class="small dim" style="margin:0">Nessuna richiesta ancora.</p>';
 }
 async function importBackup(e) {
   const f = e.target.files[0]; if (!f) return;

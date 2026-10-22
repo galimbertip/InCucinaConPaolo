@@ -1,9 +1,9 @@
 {
-  "version": "1.6.0",
+  "version": "1.6.1",
   "date": "22 ottobre 2026",
   "items": [
-    "Nuova funzione \"Cosa cucino?\": rispondi a 5 domande (portata, occasione, persone e tempo, richieste particolari, allergie e salute) e ricevi 3, 5 o 8 proposte, con \"Altre proposte\" per rifare la ricerca.",
-    "Tasto + su ogni proposta: la ricetta viene scritta per intero nel formato dell'app e salvata nel ricettario, già con le esigenze degli ospiti.",
-    "Ricettario: pulsanti Modifica ed Elimina direttamente su ogni ricetta dell'elenco."
+    "Corretto Svuota frigo e Cosa cucino? che rispondevano sempre \"Google sovraccarico\": se la ricerca web non è permessa dalla chiave gratuita l'app ora riprova senza, e se un modello AI è intasato passa da sola al successivo.",
+    "Le idee vengono lette anche quando l'AI le restituisce in un formato un po' diverso.",
+    "\"Salva e prova\" in Impostazioni ora fa una vera richiesta all'AI e dice quale modello risponde; c'è anche l'elenco delle ultime richieste con gli eventuali errori di Google."
   ]
 }
