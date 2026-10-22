@@ -1,9 +1,9 @@
 {
-  "version": "1.5.0",
+  "version": "1.6.0",
   "date": "22 ottobre 2026",
   "items": [
-    "Pulsante \"Cerca aggiornamenti\" in Impostazioni e nella finestra Versioni: controlla se su GitHub c'è una versione nuova, ne mostra le novità e la installa con un tocco.",
-    "Controllo automatico all'apertura (al massimo ogni 6 ore): se c'è un aggiornamento compare un avviso e la freccia ↑ accanto al numero di versione.",
-    "L'app scarica sempre la versione più recente della pagina invece di usare copie vecchie in memoria."
+    "Nuova funzione \"Cosa cucino?\": rispondi a 5 domande (portata, occasione, persone e tempo, richieste particolari, allergie e salute) e ricevi 3, 5 o 8 proposte, con \"Altre proposte\" per rifare la ricerca.",
+    "Tasto + su ogni proposta: la ricetta viene scritta per intero nel formato dell'app e salvata nel ricettario, già con le esigenze degli ospiti.",
+    "Ricettario: pulsanti Modifica ed Elimina direttamente su ogni ricetta dell'elenco."
   ]
 }

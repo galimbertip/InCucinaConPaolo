@@ -3,6 +3,11 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.6.0 — 22 ottobre 2026
+    - "Cosa cucino?": domande guidate → proposte → + per salvarle nel
+      ricettario (con esigenze degli ospiti).
+    - Modifica/Elimina direttamente dalle schede del ricettario.
+
   v1.5.0 — 22 ottobre 2026
     - "Cerca aggiornamenti" in Impostazioni e Versioni (legge version.json),
       installazione con un tocco, controllo automatico ogni 6 ore.
@@ -187,7 +192,9 @@ textarea{min-height:80px;resize:vertical;line-height:1.45}
 .sectionhead .aside{margin-left:auto}
 
 /* Home */
-.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+.quick{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}
+@media (min-width:640px){.quick{grid-template-columns:repeat(4,1fr)}}
+.quick a.hl{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 16%,var(--panel)),color-mix(in srgb,var(--violet) 14%,var(--panel)));border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .quick a{display:flex;flex-direction:column;gap:6px;padding:14px 12px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line);text-decoration:none;color:var(--text);box-shadow:var(--shadow)}
 .quick a svg{width:26px;height:26px;color:var(--accent)}
 .quick a b{font-family:"Space Grotesk",system-ui,sans-serif;font-size:.95rem;line-height:1.15}
@@ -201,6 +208,11 @@ textarea{min-height:80px;resize:vertical;line-height:1.45}
 .rcard .ph img{width:100%;height:100%;object-fit:cover}
 .rcard .ph .fav{position:absolute;top:8px;right:8px;color:#f5b800;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
 .rcard .ph .fav svg{width:20px;height:20px}
+.rcard .ph .fav{top:auto;bottom:8px;right:8px}
+.rcard .cact{position:absolute;top:8px;right:8px;display:flex;gap:6px}
+.rcard .cact button{width:34px;height:34px;border-radius:10px;border:0;display:grid;place-items:center;background:rgba(5,7,15,.62);color:#fff;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.rcard .cact button svg{width:16px;height:16px}
+.rcard .cact button.del{color:#ff9aa5}
 .rcard .ph .noimg{position:absolute;inset:0;display:grid;place-items:center;color:#3fe0f0;opacity:.6}
 .rcard .ph .noimg svg{width:44px;height:44px}
 .rcard .bd{padding:10px 12px 12px}
@@ -345,6 +357,16 @@ table.nutri tr.sub td:first-child{padding-left:18px;color:var(--dim)}
 .idea .miss{font-size:.88rem;margin-top:6px}
 .idea .links{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .chipinput{display:flex;gap:8px}
+.wz-dots{display:flex;gap:8px;margin:6px 0 14px}
+.wz-dots span{flex:1;height:30px;border-radius:9px;display:grid;place-items:center;font-family:"Space Grotesk",system-ui,sans-serif;font-weight:700;font-size:.85rem;background:var(--panel-2);border:1px solid var(--line);color:var(--dim);cursor:pointer}
+.wz-dots span.on{background:linear-gradient(135deg,var(--accent),var(--violet));color:var(--on-accent);border-color:transparent}
+.wz-dots span.done{color:var(--accent);border-color:var(--accent)}
+.wz-card h2{margin-bottom:4px}
+.chips.big .chip{padding:10px 15px;font-size:.95rem}
+.addbtn{width:46px;height:46px;border-radius:14px;border:0;flex:none;display:grid;place-items:center;cursor:pointer;background:linear-gradient(135deg,var(--accent),var(--violet));color:var(--on-accent);box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 35%,transparent)}
+.addbtn svg{width:24px;height:24px}
+.addbtn.ok{background:var(--ok);text-decoration:none}
+.addbtn[disabled]{opacity:.7}
 .chipinput input{flex:1}
 
 /* Cooking mode */
@@ -387,7 +409,7 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 .modal .sheet .hd h2{margin:0;flex:1}
 .menu-list{display:grid;gap:8px}
 .menu-list .btn{justify-content:flex-start}
-.toast{position:fixed;left:50%;top:calc(var(--safe-t) + 70px);transform:translateX(-50%);z-index:300;background:var(--mast-1);color:#eaf3fb;padding:10px 16px;border-radius:12px;font-size:.92rem;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:92vw;border:1px solid rgba(63,224,240,.3)}
+.toast{width:max-content;position:fixed;left:50%;top:calc(var(--safe-t) + 70px);transform:translateX(-50%);z-index:300;background:var(--mast-1);color:#eaf3fb;padding:10px 16px;border-radius:12px;font-size:.92rem;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:92vw;border:1px solid rgba(63,224,240,.3)}
 .ai-answer ul{padding-left:20px;margin:6px 0}
 .ai-answer p{margin:6px 0}
 .version-list{font-size:.9rem}
@@ -466,8 +488,13 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.6.0';
 const CHANGELOG = [
+  { v: '1.6.0', d: '22 ottobre 2026', items: [
+    'Nuova funzione "Cosa cucino?": rispondi a 5 domande (portata, occasione, persone e tempo, richieste particolari, allergie e salute) e ricevi 3, 5 o 8 proposte, con "Altre proposte" per rifare la ricerca.',
+    'Tasto + su ogni proposta: la ricetta viene scritta per intero nel formato dell\'app e salvata nel ricettario, già con le esigenze degli ospiti.',
+    'Ricettario: pulsanti Modifica ed Elimina direttamente su ogni ricetta dell\'elenco.'
+  ]},
   { v: '1.5.0', d: '22 ottobre 2026', items: [
     'Pulsante "Cerca aggiornamenti" in Impostazioni e nella finestra Versioni: controlla se su GitHub c\'è una versione nuova, ne mostra le novità e la installa con un tocco.',
     'Controllo automatico all\'apertura (al massimo ogni 6 ore): se c\'è un aggiornamento compare un avviso e la freccia ↑ accanto al numero di versione.',
@@ -932,7 +959,7 @@ function detectPlatform(url) {
   if (/(facebook\.com|fb\.watch|fb\.com)$/.test(h)) return { type: 'facebook', url };
   return { type: 'web', url };
 }
-const PLATFORM_NAME = { web: 'Sito web', youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', photo: 'Foto', text: 'Testo', ai: 'Svuota frigo', manual: 'Ricetta mia' };
+const PLATFORM_NAME = { web: 'Sito web', youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', photo: 'Foto', text: 'Testo', ai: 'Svuota frigo', consiglio: 'Cosa cucino?', manual: 'Ricetta mia' };
 
 function isoDur(s) {
   if (!s || typeof s !== 'string') return 0;
@@ -1635,6 +1662,7 @@ async function router() {
       case 'modifica': setNav('home'); return renderEditor(app, decodeURIComponent(parts[1]));
       case 'importa': setNav('importa'); return renderImport(app);
       case 'frigo': setNav('frigo'); return renderFrigo(app);
+      case 'consigli': setNav('home'); return renderWizard(app);
       case 'impostazioni': setNav('impostazioni'); return renderSettings(app);
       default: location.hash = '#/';
     }
@@ -1651,6 +1679,7 @@ function renderHome(app) {
       <a href="#/nuova">${ic('edit')}<b>Nuova ricetta</b><span>Scrivila tu, con foto</span></a>
       <a href="#/importa">${ic('link')}<b>Da un link</b><span>Siti, YouTube, TikTok, Instagram</span></a>
       <a href="#/frigo">${ic('fridge')}<b>Svuota frigo</b><span>Idee con quello che hai</span></a>
+      <a href="#/consigli" class="hl">${ic('chef')}<b>Cosa cucino?</b><span>Rispondi a qualche domanda, ti propongo ricette</span></a>
     </div>
     ${S.recipes.length ? `
     <div class="search">${ic('search')}<input type="search" id="q" placeholder="Cerca per nome, ingrediente o tag" value="${esc(S.filter.q)}"></div>
@@ -1670,7 +1699,7 @@ function renderHome(app) {
     <div class="card empty" style="margin-top:6px">
       <div style="color:var(--accent);margin-bottom:8px">${ic('pot').replace('<svg', '<svg style="width:56px;height:56px;margin:auto"')}</div>
       <h2 style="color:var(--text)">Il tuo ricettario è vuoto</h2>
-      <p>Inizia scrivendo una ricetta tua, incollando un link (anche di un video) oppure facendoti dare un'idea da Svuota frigo.</p>
+      <p>Inizia scrivendo una ricetta tua, incollando un link (anche di un video), oppure fatti dare un'idea da <b>Cosa cucino?</b> o da Svuota frigo.</p>
       ${!AI.has() ? `<p class="small">Consiglio: inserisci prima la <a href="#/impostazioni">chiave AI gratuita</a>, serve per convertire video e post.</p>` : ''}
     </div>
     <p class="homever"><button data-act="versions">In Cucina con Paolo v${APP_VERSION} · novità</button></p>`}`;
@@ -1700,7 +1729,8 @@ function drawGrid() {
 function cardHtml(r) {
   const t = totalMin(r);
   return `<a class="rcard" href="#/r/${encodeURIComponent(r.id)}">
-    <div class="ph">${r.photo ? `<img src="${esc(r.photo)}" alt="" loading="lazy">` : `<div class="noimg">${ic('pot')}</div>`}${r.favorite ? `<span class="fav">${ic('starf')}</span>` : ''}</div>
+    <div class="ph">${r.photo ? `<img src="${esc(r.photo)}" alt="" loading="lazy">` : `<div class="noimg">${ic('pot')}</div>`}${r.favorite ? `<span class="fav">${ic('starf')}</span>` : ''}
+      <span class="cact"><button data-act="card-edit" data-id="${r.id}" aria-label="Modifica ${esc(r.title)}">${ic('edit')}</button><button class="del" data-act="card-del" data-id="${r.id}" aria-label="Elimina ${esc(r.title)}">${ic('trash')}</button></span></div>
     <div class="bd"><h3>${esc(r.title || 'Senza titolo')}</h3>
     <div class="m">${t ? `<span>${fmtMin(t)}</span>` : ''}<span>${esc(r.difficulty)}</span>${r.log.length ? `<span>×${r.log.length}</span>` : ''}</div></div></a>`;
 }
@@ -2122,6 +2152,133 @@ async function runImport(kind) {
 }
 
 /* =========================================================
+   COSA CUCINO? (domande → proposte → + al ricettario)
+   ========================================================= */
+const WZ_COURSES = ['antipasto', 'primo', 'secondo', 'contorno', 'piatto unico', 'dolce', 'aperitivo / finger food', 'menù completo'];
+const WZ_EVENTS = ['pranzo normale', 'cena veloce', 'cena con amici', 'compleanno', 'Natale', 'Capodanno', 'Pasqua', 'cena romantica', 'festa per bambini', 'grigliata', 'pic-nic / gita', 'brunch', 'pranzo di lavoro (da portare)'];
+const WZ_WISHES = ['leggero', 'comfort food', 'tradizionale italiano', 'regionale', 'creativo', 'economico', 'si prepara in anticipo', 'senza forno', 'pochi ingredienti', 'di stagione', 'scenografico'];
+function wzState() {
+  if (!S.wz) S.wz = { step: 0, courses: [], event: '', eventOther: '', people: settings.get('fr_people', 4), time: 60, difficulty: 'qualsiasi', wishes: [], notes: '', needs: Object.assign({}, NEEDS_DEFAULT, { allergie: [] }), count: 5, ideas: [], seen: [], added: {}, busy: {} };
+  return S.wz;
+}
+const WZ_STEPS = ['Che piatto', 'Occasione', 'Persone e tempo', 'Richieste', 'Salute e allergie'];
+function renderWizard(app) {
+  const w = wzState();
+  setMastAction(`<button class="iconbtn" data-act="go-back" aria-label="Indietro">${ic('left')}</button>`);
+  if (w.step >= WZ_STEPS.length) return drawWzResults(app);
+  const dots = `<div class="wz-dots">${WZ_STEPS.map((t, i) => `<span class="${i < w.step ? 'done' : i === w.step ? 'on' : ''}" data-act="wz-goto" data-i="${i}">${i + 1}</span>`).join('')}</div>`;
+  let body = '';
+  if (w.step === 0) body = `<h2>Cosa devi preparare?</h2><p class="dim small" style="margin-top:0">Puoi sceglierne più di uno.</p>
+    <div class="chips big">${WZ_COURSES.map((c) => `<span class="chip ${w.courses.includes(c) ? 'on' : ''}" data-act="wz-tog" data-k="courses" data-v="${esc(c)}">${esc(cap(c))}</span>`).join('')}</div>`;
+  if (w.step === 1) body = `<h2>Per quale occasione?</h2>
+    <div class="chips big">${WZ_EVENTS.map((c) => `<span class="chip ${w.event === c ? 'on' : ''}" data-act="wz-one" data-k="event" data-v="${esc(c)}">${esc(cap(c))}</span>`).join('')}</div>
+    <div style="margin-top:12px"><label class="f">Altro (facoltativo)</label><input type="text" data-wz="eventOther" value="${esc(w.eventOther)}" placeholder="Es. anniversario dei nonni, cena di Halloween"></div>`;
+  if (w.step === 2) body = `<h2>Quanti siete e quanto tempo hai?</h2>
+    <div class="row" style="margin:6px 0 14px"><span class="grow" style="font-weight:600">Persone</span><div class="servings"><button class="iconbtn sm" data-act="wz-ppl" data-d="-1">−</button><span class="v" style="min-width:40px">${w.people}</span><button class="iconbtn sm" data-act="wz-ppl" data-d="1">+</button></div></div>
+    <h3>Tempo in cucina</h3><div class="seg">${[30, 60, 90, 120, 240].map((m) => `<button class="${w.time === m ? 'on' : ''}" data-act="wz-set" data-k="time" data-v="${m}">${m < 60 ? m + "'" : m === 240 ? 'senza limiti' : m / 60 + ' h'}</button>`).join('')}</div>
+    <h3 style="margin-top:14px">Difficoltà</h3><div class="seg">${['facile', 'media', 'qualsiasi'].map((d) => `<button class="${w.difficulty === d ? 'on' : ''}" data-act="wz-set" data-k="difficulty" data-v="${d}">${cap(d)}</button>`).join('')}</div>`;
+  if (w.step === 3) body = `<h2>Richieste particolari?</h2><p class="dim small" style="margin-top:0">Facoltativo.</p>
+    <div class="chips big">${WZ_WISHES.map((c) => `<span class="chip ${w.wishes.includes(c) ? 'on' : ''}" data-act="wz-tog" data-k="wishes" data-v="${esc(c)}">${esc(cap(c))}</span>`).join('')}</div>
+    <div style="margin-top:12px"><label class="f">Scrivi tu</label><textarea data-wz="notes" rows="3" placeholder="Es. cucina pugliese, ho il forno piccolo, mi piace il pesce, niente piccante">${esc(w.notes)}</textarea></div>`;
+  if (w.step === 4) body = `<h2>Allergie o problemi di salute?</h2><p class="dim small" style="margin-top:0">Di chi mangerà. Le ricette proposte ne terranno conto e resteranno segnate nella ricetta.</p>
+    <div class="chips big">${NEEDS_FLAGS.map(([k, l]) => `<span class="chip ${w.needs[k] ? 'on' : ''}" data-act="wz-need" data-k="${k}">${l}</span>`).join('')}</div>
+    <h3 style="margin-top:14px">Allergie</h3><div class="chips">${ALLERGENS.map(([k]) => `<span class="chip ${w.needs.allergie.includes(k) ? 'on' : ''}" data-act="wz-al" data-v="${esc(k)}">${esc(k)}</span>`).join('')}</div>
+    <div style="margin-top:12px"><label class="f">Note sugli ospiti</label><input type="text" data-wz="needs.note" value="${esc(w.needs.note)}" placeholder="Es. Marco celiaco, la nonna senza sale"></div>
+    <h3 style="margin-top:14px">Quante proposte?</h3><div class="seg">${[3, 5, 8].map((n) => `<button class="${w.count === n ? 'on' : ''}" data-act="wz-set" data-k="count" data-v="${n}">${n}</button>`).join('')}</div>`;
+  const last = w.step === WZ_STEPS.length - 1;
+  app.innerHTML = `<h1 style="margin-top:16px">Cosa cucino?</h1>
+    ${!AI.has() ? `<div class="notice" style="margin-bottom:12px"><b>Serve la chiave AI gratuita</b> per le proposte. <a href="#/impostazioni">Inseriscila qui</a>.</div>` : ''}
+    ${dots}
+    <div class="card stack wz-card">${body}</div>
+    <div class="savebar">
+      <button class="btn" data-act="wz-prev" ${w.step === 0 ? 'disabled' : ''}>${ic('left')} Indietro</button>
+      ${last ? `<button class="btn primary" data-act="wz-go">${ic('sparkle')} Proponi ricette</button>` : `<button class="btn primary" data-act="wz-next">Avanti ${ic('right')}</button>`}
+    </div>`;
+}
+function wzSummary(w) {
+  return [w.courses.length ? w.courses.join(', ') : 'qualsiasi portata', [w.event, w.eventOther].filter(Boolean).join(' – ') || 'nessuna occasione particolare', w.people + ' persone', w.time >= 240 ? 'tempo senza limiti' : 'max ' + fmtMin(w.time), 'difficoltà ' + w.difficulty].concat(w.wishes).concat(needsList(w.needs)).join(' · ');
+}
+const WZ_RULES = `Sei uno chef italiano esperto che aiuta un cuoco casalingo appassionato (senza scuola di cucina) a scegliere cosa cucinare. Proponi ricette REALI e collaudate, adatte all'occasione, alla stagione, al tempo e alle esigenze indicate. Se ci sono esigenze di salute o allergie, ogni proposta deve già rispettarle (scegli piatti naturalmente adatti o indica la versione adatta). Varia le proposte.
+Rispondi SOLO con JSON:
+{"ideas":[{"title":"","course":"antipasto|primo|secondo|contorno|piatto unico|dolce|aperitivo","description":"1-2 frasi invitanti","minutes":45,"difficulty":"facile|media|impegnativa","why":"perché è adatta a questa occasione e a questi ospiti","needsOk":"come rispetta le esigenze indicate, o stringa vuota se non ce ne sono","mainIngredients":["ingrediente principale"],"searchQuery":"titolo breve da cercare"}]}`;
+function wzPrompt(w) {
+  const month = new Date().toLocaleDateString('it-IT', { month: 'long' });
+  return [
+    'Portate: ' + (w.courses.length ? w.courses.join(', ') : 'scegli tu') + (w.courses.includes('menù completo') ? ' (proponi le portate di un menù coerente: antipasto, primo, secondo, contorno, dolce)' : ''),
+    'Occasione: ' + ([w.event, w.eventOther].filter(Boolean).join(' – ') || 'pasto qualsiasi'),
+    'Persone: ' + w.people, 'Tempo in cucina: ' + (w.time >= 240 ? 'senza limiti' : 'massimo ' + w.time + ' minuti'), 'Difficoltà: ' + w.difficulty,
+    'Mese: ' + month + ' (usa ingredienti di stagione in Italia)',
+    w.wishes.length ? 'Richieste: ' + w.wishes.join(', ') : '', w.notes ? 'Note: ' + w.notes : '',
+    profileText(w.needs),
+    w.seen.length ? 'NON riproporre: ' + w.seen.join('; ') : '',
+    'Proponi ' + w.count + ' ricette.'
+  ].filter(Boolean).join('\n');
+}
+async function wzSearch(more) {
+  const w = wzState();
+  if (!AI.has()) { toast('Prima inserisci la chiave AI in Impostazioni'); location.hash = '#/impostazioni'; return; }
+  if (!more) { w.seen = []; w.added = {}; }
+  w.seen = w.seen.concat(w.ideas.map((x) => x.title));
+  w.step = WZ_STEPS.length; w.loading = true; w.error = ''; drawWzResults($('#app'));
+  try {
+    const res = await AI.generate({ system: WZ_RULES, parts: [{ text: wzPrompt(w) }], temperature: 0.9 });
+    w.ideas = ((res.data && res.data.ideas) || []).filter((x) => x && x.title);
+    if (!w.ideas.length) throw new Error('Nessuna proposta, riprova cambiando qualche risposta.');
+  } catch (e) { w.error = e.message; }
+  w.loading = false; drawWzResults($('#app'));
+}
+function drawWzResults(app) {
+  const w = wzState(); const enc = encodeURIComponent;
+  app.innerHTML = `<h1 style="margin-top:16px">Ecco cosa puoi cucinare</h1>
+    <p class="small dim" style="margin-top:0">${esc(wzSummary(w))} · <a href="#" data-act="wz-edit">modifica risposte</a></p>
+    ${w.loading ? `<div class="card" style="display:flex;gap:12px;align-items:center"><span style="color:var(--accent)">${ic('refresh', 'spin').replace('<svg', '<svg style="width:22px;height:22px"')}</span> Penso a qualche ricetta per te…</div>` : ''}
+    ${w.error ? `<div class="notice"><b>Non ci sono riuscito.</b> ${esc(w.error)} <button class="btn sm" data-act="wz-go">Riprova</button></div>` : ''}
+    ${!w.loading && w.ideas.length ? `<div class="stack">${w.ideas.map((d, i) => {
+      const added = w.added[d.title]; const busy = w.busy[d.title];
+      return `<div class="idea">
+        <div class="row" style="align-items:flex-start;flex-wrap:nowrap">
+          <div class="grow" style="flex:1"><div class="small" style="color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-family:'Space Grotesk',system-ui,sans-serif">${esc(d.course || '')}</div><h3>${esc(d.title)}</h3></div>
+          ${added ? `<a class="addbtn ok" href="#/r/${enc(added)}" aria-label="Apri nel ricettario">${ic('check')}</a>`
+            : `<button class="addbtn" data-act="wz-add" data-i="${i}" ${busy ? 'disabled' : ''} aria-label="Aggiungi al ricettario">${busy ? ic('refresh', 'spin') : ic('plus')}</button>`}
+        </div>
+        <div class="dim small">${[d.minutes ? fmtMin(d.minutes) : '', d.difficulty].filter(Boolean).map(esc).join(' · ')}</div>
+        ${d.description ? `<p style="margin:6px 0 0">${esc(d.description)}</p>` : ''}
+        ${d.why ? `<div class="why">${esc(d.why)}</div>` : ''}
+        ${d.needsOk ? `<div class="miss" style="color:var(--ok)"><b>✓</b> ${esc(d.needsOk)}</div>` : ''}
+        ${added ? `<div class="small" style="margin-top:8px;color:var(--ok)"><b>Aggiunta al ricettario.</b> <a href="#/r/${enc(added)}">Aprila</a></div>` : busy ? `<div class="small dim" style="margin-top:8px">Scrivo la ricetta completa e la salvo…</div>` : ''}
+        <div class="links">
+          <a class="btn sm ghost" target="_blank" rel="noopener" href="https://www.giallozafferano.it/ricerca-ricette/${enc(d.searchQuery || d.title)}/">GialloZafferano</a>
+          <a class="btn sm ghost" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${enc((d.searchQuery || d.title) + ' ricetta')}">${ic('yt')} Video</a>
+        </div>
+      </div>`; }).join('')}</div>
+      <p class="small dim" style="margin-top:12px">Tocca <b>+</b> per aggiungere una ricetta al ricettario: viene scritta per intero nel formato dell'app, per ${w.people} persone, con le esigenze dei tuoi ospiti.</p>
+      <button class="btn block" style="margin-top:10px" data-act="wz-more">${ic('refresh')} Altre proposte</button>` : ''}
+    <button class="btn ghost block" style="margin-top:8px" data-act="wz-reset">Ricomincia da capo</button>`;
+}
+async function wzAdd(i) {
+  const w = wzState(); const d = w.ideas[i]; if (!d || w.busy[d.title] || w.added[d.title]) return;
+  w.busy[d.title] = true; drawWzResults($('#app'));
+  try {
+    const text = `Scrivi la ricetta completa di "${d.title}" (${d.course || ''}: ${d.description || ''}).
+Occasione: ${[w.event, w.eventOther].filter(Boolean).join(' – ') || 'pasto qualsiasi'}. Persone: ${w.people}. Tempo massimo: ${w.time >= 240 ? 'senza limiti' : w.time + ' minuti'}. Difficoltà: ${w.difficulty}.
+${w.wishes.length ? 'Richieste: ' + w.wishes.join(', ') + '. ' : ''}${w.notes ? 'Note: ' + w.notes + '. ' : ''}
+${profileText(w.needs)} La ricetta deve già rispettare queste esigenze.
+Usa la versione classica e collaudata del piatto. "servings" deve essere ${w.people}.`;
+    const res = await AI.generate({ system: RECIPE_RULES, parts: [{ text }], temperature: 0.4 });
+    if (!res.data || res.data.notARecipe) throw new Error('Non sono riuscito a scrivere la ricetta, riprova.');
+    const r = fromAiRecipe(res.data, { source: { type: 'consiglio', url: '' } });
+    r.diners = clone(w.needs);
+    r.tags = [...new Set(r.tags.concat([w.event].filter(Boolean)))];
+    r.warnings = [];
+    await DB.put(r); await loadRecipes();
+    w.added[d.title] = r.id; toast('Aggiunta al ricettario ✓');
+    if (settings.get('auto_nutri', true)) ensureNutrition(r.id);
+  } catch (e) { toast(e.message, 4500); }
+  delete w.busy[d.title];
+  if (location.hash === '#/consigli') drawWzResults($('#app'));
+}
+
+/* =========================================================
    SVUOTA FRIGO
    ========================================================= */
 function frigoState() {
@@ -2445,6 +2602,22 @@ const ACT = {
   'go-back': () => { if (history.length > 1) history.back(); else location.hash = '#/'; },
   'modal-close': () => closeModal(),
   'versions': () => openVersions(),
+  'card-edit': (a) => { location.hash = '#/modifica/' + encodeURIComponent(a.dataset.id); },
+  'card-del': async (a) => { const r = S.recipes.find((x) => x.id === a.dataset.id); if (!r || !(await confirmBox('Eliminare "' + r.title + '"? Non si può annullare.', 'Elimina', true))) return; await DB.del(r.id); await loadRecipes(); toast('Ricetta eliminata'); renderHome($('#app')); },
+  'wz-tog': (a) => { const w = wzState(); const k = a.dataset.k, v = a.dataset.v; w[k] = w[k].includes(v) ? w[k].filter((x) => x !== v) : w[k].concat(v); a.classList.toggle('on'); },
+  'wz-one': (a) => { const w = wzState(); w[a.dataset.k] = w[a.dataset.k] === a.dataset.v ? '' : a.dataset.v; $$(`[data-act="wz-one"][data-k="${a.dataset.k}"]`).forEach((b) => b.classList.toggle('on', b === a && w[a.dataset.k] === a.dataset.v)); },
+  'wz-set': (a) => { const w = wzState(); w[a.dataset.k] = isNaN(+a.dataset.v) ? a.dataset.v : +a.dataset.v; $$(`[data-act="wz-set"][data-k="${a.dataset.k}"]`).forEach((b) => b.classList.toggle('on', b === a)); },
+  'wz-ppl': (a) => { const w = wzState(); w.people = Math.max(1, Math.min(50, w.people + +a.dataset.d)); a.parentElement.querySelector('.v').textContent = w.people; },
+  'wz-need': (a) => { const w = wzState(); w.needs[a.dataset.k] = !w.needs[a.dataset.k]; a.classList.toggle('on'); },
+  'wz-al': (a) => { const w = wzState(); const v = a.dataset.v; w.needs.allergie = w.needs.allergie.includes(v) ? w.needs.allergie.filter((x) => x !== v) : w.needs.allergie.concat(v); a.classList.toggle('on'); },
+  'wz-next': () => { const w = wzState(); w.step++; renderWizard($('#app')); window.scrollTo(0, 0); },
+  'wz-prev': () => { const w = wzState(); w.step = Math.max(0, w.step - 1); renderWizard($('#app')); window.scrollTo(0, 0); },
+  'wz-goto': (a) => { const w = wzState(); w.step = +a.dataset.i; renderWizard($('#app')); },
+  'wz-go': () => wzSearch(false),
+  'wz-more': () => wzSearch(true),
+  'wz-add': (a) => wzAdd(+a.dataset.i),
+  'wz-edit': () => { const w = wzState(); w.step = 0; renderWizard($('#app')); window.scrollTo(0, 0); },
+  'wz-reset': () => { S.wz = null; renderWizard($('#app')); window.scrollTo(0, 0); },
   'upd-check': () => checkUpdate(false),
   'upd-install': () => installUpdate(),
   'timer': (a) => Timers.add(a.dataset.label || 'Timer', +a.dataset.min),
@@ -2592,7 +2765,7 @@ document.addEventListener('click', (e) => {
   const a = e.target.closest('[data-act]');
   if (!a) return;
   const fn = ACT[a.dataset.act];
-  if (fn) { if (a.tagName === 'A' && a.getAttribute('href') === '#') e.preventDefault(); fn(a, e); }
+  if (fn) { if ((a.tagName === 'A' && a.getAttribute('href') === '#') || (a.tagName !== 'A' && a.closest('a'))) { e.preventDefault(); e.stopPropagation(); } fn(a, e); }
 });
 // campo persone: ricalcolo appena smetti di scrivere (o con Invio)
 let servTimer = null, servRefocus = false;
@@ -2614,6 +2787,7 @@ document.addEventListener('input', (e) => {
 document.addEventListener('change', (e) => { const el = e.target; if (el.dataset.serv === undefined) return; clearTimeout(servTimer); applyServ(el); });
 document.addEventListener('keydown', (e) => { const el = e.target; if (e.key === 'Enter' && el.dataset && el.dataset.serv !== undefined) { clearTimeout(servTimer); applyServ(el); el.blur(); } });
 document.addEventListener('focusin', (e) => { if (!servRefocus && e.target.dataset && e.target.dataset.serv !== undefined) e.target.select(); });
+document.addEventListener('input', (e) => { const el = e.target; if (el.dataset && el.dataset.wz && S.wz) setPath(S.wz, el.dataset.wz, el.value); });
 // input nell'editor: scrive direttamente nella ricetta in modifica
 document.addEventListener('input', (e) => {
   const el = e.target;
