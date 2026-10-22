@@ -3,6 +3,15 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.2.0 — 22 ottobre 2026
+    - Controllo automatico delle dosi sul testo originale dopo la
+      conversione AI (es. "1 cucchiaio di latte" non diventa più 2).
+    - Import da link più robusto quando il sito blocca la lettura.
+    - Nutrizionista: valori a porzione e per 100 g, % giornaliera, fonti
+      delle calorie, porzioni per pasto/spuntino, sezione diabetici
+      (carboidrati, indice e carico glicemico), 14 allergeni UE.
+    - Profilo alimentare con avvisi personalizzati e alternative.
+
   v1.1.0 — 22 ottobre 2026
     - Ricette dinamiche: campo persone digitabile (oltre a − / +) con
       ricalcolo immediato di tutte le dosi, anche dentro i passaggi.
@@ -226,6 +235,34 @@ button.badge{cursor:pointer}
 .stars{display:inline-flex;gap:2px;color:#f5b800}
 .stars svg{width:16px;height:16px}
 
+/* Nutrizione */
+.nutri-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.nutri-kpi div{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center}
+.nutri-kpi b{display:block;font-family:"Space Grotesk",system-ui,sans-serif;font-size:1.15rem;color:var(--accent)}
+.nutri-kpi span{font-size:.72rem;color:var(--dim)}
+table.nutri{width:100%;border-collapse:collapse;font-size:.92rem}
+table.nutri th{text-align:right;font-weight:600;color:var(--dim);font-size:.78rem;padding:6px 4px;border-bottom:2px solid var(--line)}
+table.nutri td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+table.nutri td:first-child,table.nutri th:first-child{text-align:left}
+table.nutri tr.sub td:first-child{padding-left:18px;color:var(--dim)}
+.bars{display:grid;gap:6px}
+.bar-row{display:grid;grid-template-columns:minmax(80px,38%) 1fr auto;gap:8px;align-items:center;font-size:.86rem}
+.bar-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-row i{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--accent),var(--violet))}
+.advice{display:grid;grid-template-columns:118px 1fr;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:.93rem}
+.advice .lbl{display:flex;gap:6px;align-items:flex-start;font-weight:700;font-family:"Space Grotesk",system-ui,sans-serif;font-size:.86rem}
+.advice .lbl svg{width:16px;height:16px;color:var(--accent);flex:none;margin-top:2px}
+.diab{border-radius:12px;padding:12px;background:var(--panel-2);border:1px solid var(--line)}
+.diab.me{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+.gi-ok b{color:var(--ok)} .gi-mid b{color:var(--warn)} .gi-hi b{color:var(--bad)}
+.chip.al-yes{border-color:color-mix(in srgb,var(--warn) 55%,transparent);background:var(--warn-bg)}
+.chip.al-tr{border-style:dashed}
+.chip.al-me{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 16%,var(--panel));font-weight:700}
+.chip.ok{border-color:color-mix(in srgb,var(--ok) 50%,transparent)}
+.chip.no{opacity:.7;text-decoration:line-through}
+.prof-alert{margin-top:12px;border-radius:12px;padding:12px 14px;background:color-mix(in srgb,var(--bad) 12%,var(--panel));border:1px solid color-mix(in srgb,var(--bad) 45%,transparent);font-size:.93rem}
+.prof-alert b{color:var(--bad)}
+
 /* Editor */
 .ed-sec{margin-top:18px}
 .ed-sec>h2{display:flex;align-items:center;gap:8px}
@@ -391,8 +428,15 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const CHANGELOG = [
+  { v: '1.2.0', d: '22 ottobre 2026', items: [
+    'Controllo automatico delle dosi: dopo la conversione con l\'AI le quantità vengono confrontate con il testo originale e, se diverse, corrette (con avviso).',
+    'Lettura dei link più robusta: se il sito blocca la lettura, l\'AI prova ad aprire la pagina direttamente.',
+    'Nutrizionista: valori nutrizionali a porzione e per 100 g, % sul fabbisogno, da dove vengono le calorie, quanto mangiarne a pranzo e come spuntino.',
+    'Sezione per diabetici (carboidrati, zuccheri, indice e carico glicemico, consigli) e 14 allergeni UE con riconoscimento automatico dagli ingredienti.',
+    'Profilo alimentare in Impostazioni (diabete, celiachia, lattosio, allergie, vegetariano/vegano, fabbisogno): avvisi in cima alla ricetta e alternative per adattarla.'
+  ]},
   { v: '1.1.0', d: '22 ottobre 2026', items: [
     'Ricette dinamiche: campo persone in cui scrivere il numero (oltre a − / +), con ricalcolo immediato di tutte le dosi, anche nei passaggi e nel testo condiviso.',
     'Numero di persone predefinito in Impostazioni: ogni ricetta si apre già calcolata per quante persone cucini di solito.',
@@ -806,6 +850,7 @@ const RECIPE_SCHEMA = `{
 const RECIPE_RULES = `Sei il redattore del ricettario personale di Paolo: cuoco casalingo appassionato, senza scuola di cucina, che si spazientisce quando una ricetta non va come previsto. Il tuo compito è trasformare il materiale fornito in UNA ricetta chiarissima, in italiano, nel formato JSON indicato.
 Regole:
 - Resta fedele alla ricetta originale: non cambiare ingredienti né procedimento. Traduci in italiano se serve.
+- Le dosi scritte nell'originale vanno copiate ESATTAMENTE (stesso numero, stessa unità, stesse porzioni): non arrotondarle, non raddoppiarle, non ricalcolarle. "servings" è il numero di persone indicato nell'originale.
 - Dosi e tempi: se il materiale li dà, usali. Se mancano, stimali con buon senso, metti "estimated": true sull'ingrediente e scrivi un avviso in "warnings" (es. "Le dosi non sono dette nel video: sono stimate").
 - Unità metriche (g, kg, ml, l, °C) e unità casalinghe italiane (cucchiaio, cucchiaino, pz, spicchio, pizzico, q.b.). Converti cup/oz/lb/°F. "qty" è sempre un numero (0.5, non "1/2"); per "quanto basta" usa unit "q.b." e qty null.
 - Ingredienti: raggruppali per preparazione ("Per l'impasto", "Per la farcia"); se c'è una sola preparazione usa un unico gruppo con name "". Elencali nell'ordine in cui si usano. In "prep" scrivi come vanno preparati prima di iniziare (tritato fine, a temperatura ambiente, ...).
@@ -814,6 +859,7 @@ Regole:
 - "critical": 2-4 punti in cui QUESTA ricetta tipicamente va storta, ciascuno con il rimedio pratico immediato.
 - "equipment": tutti gli strumenti necessari, con misure quando contano.
 - Se il materiale non contiene una ricetta, rispondi solo {"notARecipe": true, "warnings": ["perché"]}.
+- Se il materiale contiene PIÙ ricette diverse (raccolta, galleria, elenco) e non ti è stato detto quale scegliere, rispondi solo {"multiple": true, "titles": ["titolo ricetta 1", "titolo ricetta 2", ...]}.
 Rispondi SOLO con il JSON, senza testo prima o dopo.
 Formato:
 ` + RECIPE_SCHEMA;
@@ -857,7 +903,9 @@ function findJsonLdRecipe(html) {
   const meta = (p) => { const m = doc.querySelector(`meta[property="${p}"],meta[name="${p}"]`); return m ? m.getAttribute('content') : ''; };
   // testo leggibile della pagina, per l'AI
   $$('script,style,noscript,svg,iframe,header,footer,nav,form,aside', doc).forEach((n) => n.remove());
-  const text = (doc.body ? doc.body.innerText || doc.body.textContent : '').replace(/\s+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/[ \t]+/g, ' ').trim().slice(0, 40000);
+  $$('br', doc).forEach((n) => n.replaceWith('\n'));
+  $$('p,li,div,h1,h2,h3,h4,h5,h6,tr,dt,dd,section,article,figcaption,blockquote', doc).forEach((n) => n.append('\n'));
+  const text = (doc.body ? doc.body.textContent : '').replace(/\s+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/[ \t]+/g, ' ').trim().slice(0, 40000);
   return { recipe: found[0] || null, ogImage: meta('og:image'), ogTitle: meta('og:title'), ogDesc: meta('og:description') || meta('description'), text };
 }
 function ldImage(img) {
@@ -912,11 +960,56 @@ async function importFromUrl(url, log) {
   return importSocial(pf, log);
 }
 
-async function importWeb(url, log) {
+/* Controllo automatico delle dosi: confronta quelle scritte dall'AI con quelle del testo originale
+   e, se non coincidono, rimette quelle originali (l'AI a volte sbaglia i numeri). */
+function nameTokens(s) { return new Set(normTxt(s).split(' ').filter((w) => w.length > 2 && !['per', 'con', 'del', 'della', 'delle', 'dei', 'fresco', 'fresca', 'freschi'].includes(w))); }
+function sourceIngredients(text) {
+  return String(text || '').split(/\n|•/).map((l) => l.trim())
+    .filter((l) => l && l.length < 120 && /(^\s*[-•*]?\s*(\d|½|¼|¾))|(\d+\s*(g|kg|ml|l|cl|gr)\b)|q\.?\s?b\.?$/i.test(l))
+    .map((l) => parseIngredientLine(l)).filter((i) => i && i.name && i.qty != null);
+}
+function reconcileDoses(r, sourceText) {
+  const src = sourceIngredients(sourceText);
+  const fixes = [];
+  const m = String(sourceText || '').match(/per\s+(\d+)\s+(persone|porzioni|pezzi)/i);
+  if (m && +m[1] !== r.servings.amount) { fixes.push('porzioni ' + r.servings.amount + ' → ' + m[1]); r.servings.amount = +m[1]; }
+  if (!src.length) return fixes;
+  const used = new Set();
+  allIngredients(r).forEach((ing) => {
+    const a = nameTokens(ing.name); if (!a.size) return;
+    let best = null, bestScore = 0, tie = false;
+    src.forEach((sItem, idx) => {
+      if (used.has(idx)) return;
+      const b = nameTokens(sItem.name); let common = 0; a.forEach((w) => { if (b.has(w) || [...b].some((x) => x.startsWith(w.slice(0, 5)) && w.length > 4)) common++; });
+      const score = common / (a.size + b.size - common);
+      if (score > bestScore + 1e-9) { best = idx; bestScore = score; tie = false; } else if (Math.abs(score - bestScore) < 1e-9 && score > 0) tie = true;
+    });
+    if (best == null || tie || bestScore < 0.34) return;
+    used.add(best);
+    const sItem = src[best];
+    const sameUnit = !sItem.unit || cleanUnit(sItem.unit) === cleanUnit(ing.unit) || (ing.unit === 'pz' && !sItem.unit);
+    if (Math.abs((ing.qty ?? -1) - sItem.qty) > 0.001 || !sameUnit) {
+      fixes.push(ing.name + ' ' + [fmtQty(ing.qty, ing.unit), unitLabel(ing.unit, ing.qty)].filter(Boolean).join(' ') + ' → ' + [fmtQty(sItem.qty, sItem.unit), unitLabel(sItem.unit || ing.unit, sItem.qty)].filter(Boolean).join(' '));
+      ing.qty = sItem.qty; if (sItem.unit) ing.unit = sItem.unit;
+    }
+    ing.estimated = false;
+  });
+  // dosi parziali nei passaggi: mai più del totale
+  r.phases.forEach((p) => p.steps.forEach((s) => s.uses.forEach((u) => { const i = findIng(r, u.ing); if (i && u.qty != null && (i.qty == null || u.qty > i.qty + 0.001)) u.qty = null; })));
+  if (fixes.length) r.warnings.unshift('Dosi corrette automaticamente sul testo originale: ' + fixes.join('; ') + '.');
+  return fixes;
+}
+
+async function importWeb(url, log, pick) {
   let page = null;
   const s1 = log('Leggo la pagina della ricetta');
-  try { page = findJsonLdRecipe(await proxyFetch(url)); s1.ok(page.recipe ? 'Trovati i dati della ricetta' : 'Pagina letta'); }
-  catch { s1.ko('Non riesco ad aprire la pagina direttamente'); }
+  if (S.pageCache && S.pageCache.url === url) { page = S.pageCache.page; s1.ok('Pagina già letta'); }
+  else {
+    try { page = findJsonLdRecipe(await proxyFetch(url)); S.pageCache = { url, page }; s1.ok(page.recipe ? 'Trovati i dati della ricetta' : 'Pagina letta'); }
+    catch { s1.ko('Non riesco ad aprire la pagina direttamente'); }
+  }
+  if (pick && page) page = Object.assign({}, page, { recipe: page.recipe && normTxt(ldText(page.recipe.name)).includes(normTxt(pick).slice(0, 20)) ? page.recipe : null });
+  const pickTxt = pick ? '\nLa pagina contiene più ricette: estrai SOLO la ricetta "' + pick + '".' : '';
 
   const photoUrl = page ? ldImage(page.recipe && page.recipe.image) || page.ogImage : '';
   if (!AI.has()) {
@@ -930,7 +1023,7 @@ async function importWeb(url, log) {
   const s3 = log('L\'AI la riscrive nel formato dell\'app');
   let res;
   if (page && (page.recipe || page.text.length > 300)) {
-    const material = page.recipe ? 'Dati strutturati della ricetta:\n' + JSON.stringify(page.recipe).slice(0, 30000) + '\n\nTesto della pagina (per consigli e dettagli):\n' + page.text.slice(0, 12000) : 'Testo della pagina:\n' + page.text;
+    const material = pickTxt + (page.recipe ? 'Dati strutturati della ricetta:\n' + JSON.stringify(page.recipe).slice(0, 30000) + '\n\nTesto della pagina (per consigli e dettagli):\n' + page.text.slice(0, 12000) : 'Testo della pagina:\n' + page.text);
     try { res = await AI.generate({ system: RECIPE_RULES, parts: [{ text: 'Fonte: ' + url + '\n\n' + material }] }); }
     catch (e) {
       if (!page.recipe) throw e;
@@ -941,12 +1034,21 @@ async function importWeb(url, log) {
       return r;
     }
   } else {
-    res = await AI.generateWithFallback({ system: RECIPE_RULES, tools: ['url_context'], parts: [{ text: 'Leggi la ricetta a questo indirizzo e convertila: ' + url }] });
+    res = await AI.generateWithFallback({ system: RECIPE_RULES, tools: ['url_context'], parts: [{ text: 'Leggi la ricetta a questo indirizzo e convertila: ' + url + pickTxt }] });
     if (!res.usedTools) throw new Error('Non riesco a leggere questa pagina (blocca l\'accesso). Copia il testo della ricetta e usa "Testo".');
   }
-  if (!res.data || res.data.notARecipe) throw new Error('In questa pagina non ho trovato una ricetta.' + (res.data && res.data.warnings ? ' ' + res.data.warnings.join(' ') : ''));
+  if (res.data && res.data.multiple && Array.isArray(res.data.titles) && res.data.titles.length) {
+    s3.ok('La pagina contiene ' + res.data.titles.length + ' ricette');
+    throw Object.assign(new Error('Questa pagina è una raccolta di ricette: scegli quale importare.'), { code: 'multi', titles: res.data.titles.slice(0, 20), url });
+  }
+  if ((!res.data || res.data.notARecipe) && page) {
+    // la pagina letta era probabilmente una schermata di blocco: chiedo all'AI di aprirla direttamente
+    try { const r2 = await AI.generateWithFallback({ system: RECIPE_RULES, tools: ['url_context'], parts: [{ text: 'Leggi la ricetta a questo indirizzo e convertila: ' + url + pickTxt }] }); if (r2.usedTools) res = r2; } catch {}
+  }
+  if (!res.data || res.data.notARecipe) throw new Error('Non riesco a leggere la ricetta da questa pagina (il sito potrebbe bloccare l\'accesso). Copia il testo della ricetta e usa "Testo".');
   s3.ok();
   const r = fromAiRecipe(res.data, { source: { type: 'web', url } });
+  if (page) reconcileDoses(r, page.recipe ? (page.recipe.recipeIngredient || []).map(ldText).join('\n') + '\n' + (page.recipe.recipeYield ? 'per ' + String(Array.isArray(page.recipe.recipeYield) ? page.recipe.recipeYield[0] : page.recipe.recipeYield).match(/\d+/)?.[0] + ' persone' : '') : page.text);
   const s4 = log('Scarico la foto');
   r.photo = await remoteToPhoto(photoUrl); s4.ok(r.photo ? '' : 'Nessuna foto trovata');
   return r;
@@ -1022,6 +1124,7 @@ async function importSocial(pf, log) {
   }
   s2.ok();
   const r = fromAiRecipe(res.data, { source: { type: pf.type, url: pf.url, author } });
+  if (caption) reconcileDoses(r, caption);
   r.photo = thumb || '';
   if (!caption) r.warnings.push('Ricetta ricavata senza leggere la didascalia completa: verifica dosi e passaggi.');
   return r;
@@ -1033,7 +1136,9 @@ async function importFromText(text, log) {
   if (!res.data || res.data.notARecipe) { s.ko(); throw new Error('In questo testo non ho trovato una ricetta.'); }
   s.ok();
   const urlm = text.match(/https?:\/\/\S+/);
-  return fromAiRecipe(res.data, { source: { type: 'text', url: urlm ? urlm[0] : '' } });
+  const r = fromAiRecipe(res.data, { source: { type: 'text', url: urlm ? urlm[0] : '' } });
+  reconcileDoses(r, text);
+  return r;
 }
 
 async function importFromPhotos(files, useCover, log) {
@@ -1104,6 +1209,152 @@ function miniMd(t) {
     else { if (inList) { html += '</ul>'; inList = false; } if (l.trim()) html += '<p>' + l + '</p>'; }
   }
   return html + (inList ? '</ul>' : '');
+}
+
+/* ---------- Nutrizionista ---------- */
+const ALLERGENS = [
+  ['glutine', /\b(farin[ae](?! di (riso|mais|mandorl|ceci|cocco|grano saraceno|castagne|lenticchie|tapioca|quinoa))|pasta(?! di mandorl)|sfoglia|frolla|brisee|bris[eé]e|pane|pangrattato|semola\b|semolino|orzo|farro|segale|kamut|cous ?cous|bulgur|biscott|savoiard|pan di spagna|grissin|cracker|fette biscottate|seitan|birra|lievito madre|tagliatell|spaghett|lasagn|gnocch|ravioli|tortellin|piadin|tortill)/],
+  ['crostacei', /\b(gamber|scamp|aragost|astic|granch|mazzancoll|canocch)/],
+  ['uova', /\b(uov[oa]|tuorl|album|maionese|frittat|savoiard)/],
+  ['pesce', /\b(pesce|tonno|salmon|merluzz|acciug|alici|baccal|stoccafiss|orat|branzin|spigol|sgombr|sard[ei]|trota|pesce spada|colatura|bottarga)/],
+  ['arachidi', /\b(arachid|noccioline)/],
+  ['soia', /\b(soia|tofu|edamame|miso|tempeh)/],
+  ['latte', /\b(latte(?! di (cocco|mandorl|soia|riso|avena))|burro(?! di (arachidi|cacao))|panna|mascarpone|ricotta|formagg|parmigian|grana\b|grana padano|pecorin|mozzarell|yogurt|besciamell|stracchin|gorgonzol|fontin|scamorz|provol|crescenz|caciocavall|emmental|taleggi|asiago|burrata|stracciatell|philadelphia|latticin|siero)/],
+  ['frutta a guscio', /\b(noci\b|noce\b(?! (moscata|di cocco))|nocciol|mandorl|pistacch|anacard|pecan|macadamia|noci del brasile|gianduia|nutella|amaretti)/],
+  ['sedano', /\b(sedano|sedanorapa)/],
+  ['senape', /\b(senape|mostarda)/],
+  ['sesamo', /\b(sesamo|tahin)/],
+  ['solfiti', /\b(vino|marsala|aceto|frutta secca|uvett|albicocche secche|prugne secche)/],
+  ['lupini', /\b(lupin)/],
+  ['molluschi', /\b(cozz|vongol|calamar|polpo|polipo|seppi|totan|ostric|capesant|lumac|moscardin)/]
+];
+function detectAllergens(r) {
+  const found = {};
+  allIngredients(r).forEach((i) => {
+    const t = ' ' + normTxt(i.name + ' ' + (i.prep || '')) + ' ';
+    ALLERGENS.forEach(([name, rx]) => { if (rx.test(t)) (found[name] = found[name] || []).push(i.name); });
+  });
+  return found;
+}
+const PROFILE_DEFAULT = { salutista: false, diabete: false, celiachia: false, lattosio: false, vegetariano: false, vegano: false, allergie: [], kcal: 2000 };
+function dietProfile() { return Object.assign({}, PROFILE_DEFAULT, settings.get('diet_profile', {})); }
+function profileText(pr) {
+  const a = [];
+  if (pr.salutista) a.push('vuole mangiare sano e leggero'); if (pr.diabete) a.push('ha il diabete'); if (pr.celiachia) a.push('è celiaco');
+  if (pr.lattosio) a.push('è intollerante al lattosio'); if (pr.vegetariano) a.push('è vegetariano'); if (pr.vegano) a.push('è vegano');
+  if (pr.allergie.length) a.push('è allergico a: ' + pr.allergie.join(', '));
+  return a.length ? 'Chi cucina ' + a.join('; ') + '. Fabbisogno di riferimento: ' + pr.kcal + ' kcal al giorno.' : 'Fabbisogno di riferimento: ' + pr.kcal + ' kcal al giorno.';
+}
+function profileConflicts(r) {
+  const pr = dietProfile(); const al = detectAllergens(r); const out = [];
+  const n = r.nutrition && r.nutrition.data;
+  if (pr.celiachia && al.glutine) out.push('glutine (' + al.glutine.join(', ') + ')');
+  if (pr.lattosio && al.latte) out.push('lattosio (' + al.latte.join(', ') + ')');
+  pr.allergie.forEach((x) => { if (al[x]) out.push(x + ' (' + al[x].join(', ') + ')'); });
+  if (n && n.suitableFor) {
+    if (pr.vegano && n.suitableFor.vegani === false) out.push('non è vegana');
+    else if (pr.vegetariano && n.suitableFor.vegetariani === false) out.push('non è vegetariana');
+  }
+  return out;
+}
+function nutriKey(r) { return JSON.stringify([r.servings.amount, allIngredients(r).map((i) => [i.name, i.qty, i.unit])]); }
+function nutriFresh(r) { return r.nutrition && r.nutrition.key === nutriKey(r); }
+const NUTRI_RULES = `Sei un nutrizionista e dietista italiano. Stima i valori nutrizionali della ricetta usando le tabelle CREA (o USDA) per ogni ingrediente, considerando cotture e assorbimento d'olio di frittura in modo realistico. Gli ingredienti "q.b." contali in quantità tipiche e indica l'ipotesi. Gli ingredienti facoltativi NON vanno contati.
+Rispondi SOLO con JSON:
+{
+ "portionGrams": 180, "portionNote": "1 fetta / 1 piatto", "totalGrams": 1080,
+ "perPortion": {"kcal": 0, "carbs": 0, "sugars": 0, "fiber": 0, "protein": 0, "fat": 0, "satFat": 0, "salt": 0},
+ "topCalories": [{"name": "ingrediente", "kcal": 0}],
+ "glycemic": {"index": "basso|medio|alto", "load": 0, "note": "spiegazione breve"},
+ "servingAdvice": {"meal": "quanto mangiarne a pranzo o cena e con cosa accompagnarlo", "snack": "quanto come spuntino o merenda, oppure 'non adatto come spuntino'"},
+ "diabetes": {"carbsPortion": 0, "advice": "consigli pratici: porzione, abbinamenti per abbassare il picco glicemico, sostituzioni"},
+ "allergens": [{"name": "uno dei 14 allergeni UE in italiano: glutine, crostacei, uova, pesce, arachidi, soia, latte, frutta a guscio, sedano, senape, sesamo, solfiti, lupini, molluschi", "status": "contiene|tracce", "from": "ingredienti responsabili"}],
+ "suitableFor": {"celiaci": false, "intolleranti al lattosio": false, "vegetariani": true, "vegani": false},
+ "swaps": {"healthy": "come renderla più leggera", "glutenFree": "come farla senza glutine, o stringa vuota se già lo è", "lactoseFree": "come farla senza lattosio, o stringa vuota se già lo è"},
+ "assumptions": ["ipotesi fatte"]
+}
+Valori in grammi (sale in grammi, energia in kcal) arrotondati a 1 decimale. "tracce" per prodotti confezionati che spesso le contengono (es. cioccolato: latte, frutta a guscio, soia). Sii concreto e onesto: sono stime.`;
+async function computeNutrition(r) {
+  const ings = r.components.map((c) => (c.name ? c.name + ':\n' : '') + c.ingredients.map((i) => '- ' + [i.qty != null ? fmtQty(i.qty, i.unit) : '', unitLabel(i.unit, i.qty), i.name].filter(Boolean).join(' ') + (i.prep ? ', ' + i.prep : '') + (i.optional ? ' (facoltativo)' : '')).join('\n')).join('\n');
+  const steps = r.phases.flatMap((p) => p.steps.map((s) => s.text)).join(' ').slice(0, 3000);
+  const res = await AI.generate({ system: NUTRI_RULES, temperature: 0.2, parts: [{ text: `Ricetta: ${r.title} (${r.category}) per ${r.servings.amount} ${r.servings.unit}.\nIngredienti:\n${ings}\nProcedimento in breve: ${steps}\n\n${profileText(dietProfile())}` }] });
+  if (!res.data || !res.data.perPortion) throw new Error('Non sono riuscito a calcolare i valori, riprova.');
+  return { key: nutriKey(r), date: Date.now(), data: res.data };
+}
+const nutriBusy = new Set();
+async function ensureNutrition(id, force) {
+  const r = S.recipes.find((x) => x.id === id); if (!r || nutriBusy.has(id) || (!force && nutriFresh(r)) || !AI.has()) return;
+  nutriBusy.add(id); if (location.hash === '#/r/' + encodeURIComponent(id)) rerenderRecipe(id);
+  try { r.nutrition = await computeNutrition(r); await DB.put(r); r._nutriErr = ''; }
+  catch (e) { r._nutriErr = e.message; }
+  finally { nutriBusy.delete(id); if (location.hash === '#/r/' + encodeURIComponent(id)) rerenderRecipe(id); }
+}
+const RI = { kcal: 2000, fat: 70, satFat: 20, carbs: 260, sugars: 90, protein: 50, salt: 6, fiber: 25 };
+function n1(x) { return x == null || isNaN(x) ? '—' : String(Math.round(x * 10) / 10).replace('.', ','); }
+function nutritionHtml(r, num) {
+  const pr = dietProfile();
+  const al = detectAllergens(r);
+  const n = r.nutrition && r.nutrition.data;
+  const busy = nutriBusy.has(r.id);
+  const head = `<div class="sectionhead"><span class="num">${num}</span><h2>Valori nutrizionali</h2></div>`;
+  const allergensFromAi = n && Array.isArray(n.allergens) ? n.allergens : [];
+  const merged = {};
+  Object.entries(al).forEach(([k, v]) => (merged[k] = { status: 'contiene', from: v.join(', ') }));
+  allergensFromAi.forEach((a) => { const k = normTxt(a.name); const key = ALLERGENS.map((x) => x[0]).find((x) => normTxt(x) === k) || a.name; if (!merged[key] || (merged[key].status === 'tracce' && a.status === 'contiene')) merged[key] = { status: a.status === 'tracce' ? 'tracce' : 'contiene', from: a.from || '' }; });
+  const allergenBox = `<div><h3>Allergeni</h3>${Object.keys(merged).length ? `<div class="chips">${Object.entries(merged).map(([k, v]) => `<span class="chip ${v.status === 'contiene' ? 'al-yes' : 'al-tr'} ${pr.allergie.includes(k) || (pr.celiachia && k === 'glutine') || (pr.lattosio && k === 'latte') ? 'al-me' : ''}" title="${esc(v.from)}">${v.status === 'contiene' ? '' : 'tracce: '}${esc(k)}</span>`).join('')}</div><p class="small dim" style="margin:6px 0 0">${Object.entries(merged).filter(([, v]) => v.from).map(([k, v]) => `<b>${esc(k)}</b>: ${esc(v.from)}`).join(' · ')}</p>` : '<p class="small dim" style="margin:0">Nessuno dei 14 allergeni principali riconosciuto negli ingredienti.</p>'}
+    <p class="small dim" style="margin:6px 0 0">Per i prodotti confezionati controlla sempre l'etichetta: possono contenere tracce.</p></div>`;
+  if (!n) {
+    return head + `<div class="card stack">
+      ${allergenBox}
+      ${busy ? `<div class="row dim">${ic('refresh', 'spin').replace('<svg', '<svg style="width:18px;height:18px"')} Il nutrizionista sta calcolando…</div>`
+        : AI.has() ? `<button class="btn primary" data-act="nutri" data-id="${r.id}">${ic('sparkle')} Calcola valori nutrizionali</button>${r._nutriErr ? `<div class="notice">${esc(r._nutriErr)}</div>` : ''}`
+        : `<p class="small dim" style="margin:0">Per calorie, carboidrati, porzioni consigliate e consigli per diabetici serve la <a href="#/impostazioni">chiave AI</a>.</p>`}
+    </div>`;
+  }
+  const pp = n.perPortion || {}; const g = +n.portionGrams || 0;
+  const per100 = (x) => (g ? (x * 100) / g : null);
+  const rows = [['Energia', 'kcal', 'kcal'], ['Grassi', 'fat', 'g'], ['  di cui saturi', 'satFat', 'g'], ['Carboidrati', 'carbs', 'g'], ['  di cui zuccheri', 'sugars', 'g'], ['Fibre', 'fiber', 'g'], ['Proteine', 'protein', 'g'], ['Sale', 'salt', 'g']];
+  const kref = pr.kcal || 2000;
+  const ri = (k) => (RI[k] ? Math.round(((pp[k] || 0) / (RI[k] * (k === 'fiber' || k === 'salt' ? 1 : kref / 2000))) * 100) : null);
+  const suit = n.suitableFor || {};
+  const stale = !nutriFresh(r);
+  const gi = n.glycemic || {}; const giCls = { basso: 'ok', medio: 'mid', alto: 'hi' }[gi.index] || 'mid';
+  return head + `<div class="card stack">
+    ${stale ? `<div class="notice"><b>Ingredienti cambiati:</b> i valori potrebbero non essere aggiornati. <button class="btn sm" data-act="nutri" data-id="${r.id}" ${busy ? 'disabled' : ''}>${ic('refresh')} Ricalcola</button></div>` : ''}
+    <div class="nutri-kpi">
+      <div><b>${Math.round(pp.kcal || 0)}</b><span>kcal a porzione</span></div>
+      <div><b>${n1(pp.carbs)} g</b><span>carboidrati</span></div>
+      <div><b>${n1(pp.protein)} g</b><span>proteine</span></div>
+      <div><b>${n1(pp.fat)} g</b><span>grassi</span></div>
+    </div>
+    <p class="small dim" style="margin:0">1 porzione = ${n.portionNote ? esc(n.portionNote) + ', ' : ''}circa ${Math.round(g)} g (ricetta per ${fmtQty(r.servings.amount, 'pz')} ${esc(r.servings.unit)}).</p>
+    <table class="nutri"><thead><tr><th></th><th>Porzione</th><th>100 g</th><th>%&nbsp;giornal.</th></tr></thead><tbody>
+      ${rows.map(([l, k, u]) => `<tr class="${l.startsWith('  ') ? 'sub' : ''}"><td>${esc(l.trim())}</td><td>${n1(pp[k])} ${u}</td><td>${g ? n1(per100(pp[k] || 0)) + ' ' + u : '—'}</td><td>${ri(k) != null ? ri(k) + '%' : ''}</td></tr>`).join('')}
+    </tbody></table>
+    <p class="small dim" style="margin:-4px 0 0">% sul fabbisogno di riferimento di ${kref} kcal/giorno (modificabile in Impostazioni).</p>
+    ${n.topCalories && n.topCalories.length ? `<div><h3>Da dove vengono le calorie</h3><div class="bars">${(() => { const tot = n.topCalories.reduce((a, b) => a + (+b.kcal || 0), 0) || 1; return n.topCalories.slice(0, 5).map((t) => `<div class="bar-row"><span>${esc(t.name)}</span><i style="width:${Math.max(4, Math.round(((+t.kcal || 0) / tot) * 100))}%"></i><b>${Math.round((+t.kcal || 0) / (r.servings.amount || 1))} kcal</b></div>`).join(''); })()}</div><p class="small dim" style="margin:4px 0 0">kcal per porzione.</p></div>` : ''}
+
+    <div><h3>Quanto mangiarne</h3>
+      <div class="advice"><span class="lbl">${ic('chef')} Pranzo / cena</span><span>${esc((n.servingAdvice || {}).meal || '')}</span></div>
+      <div class="advice"><span class="lbl">${ic('clock')} Spuntino</span><span>${esc((n.servingAdvice || {}).snack || '')}</span></div>
+    </div>
+
+    <div class="${pr.diabete ? 'diab me' : 'diab'}"><h3>Per chi ha il diabete</h3>
+      <div class="row" style="gap:8px"><span class="meta-pill">Carboidrati a porzione <b>${n1((n.diabetes || {}).carbsPortion ?? pp.carbs)} g</b></span><span class="meta-pill">di cui zuccheri <b>${n1(pp.sugars)} g</b></span>
+      <span class="meta-pill gi-${giCls}">Indice glicemico <b>${esc(gi.index || '—')}</b></span>${gi.load ? `<span class="meta-pill">Carico glicemico <b>${n1(gi.load)}</b></span>` : ''}</div>
+      ${gi.note ? `<p class="small" style="margin:8px 0 0">${esc(gi.note)}</p>` : ''}
+      ${(n.diabetes || {}).advice ? `<p style="margin:8px 0 0">${esc(n.diabetes.advice)}</p>` : ''}
+    </div>
+
+    ${allergenBox}
+    <div><h3>Adatta a</h3><div class="chips">${Object.entries(suit).map(([k, v]) => `<span class="chip ${v === true ? 'ok' : v === false ? 'no' : ''}">${v === true ? '✓' : v === false ? '✗' : '~'} ${esc(k)}</span>`).join('')}</div></div>
+    ${n.swaps && (n.swaps.healthy || n.swaps.glutenFree || n.swaps.lactoseFree) ? `<div><h3>Come adattarla</h3>
+      ${n.swaps.healthy ? `<p style="margin:4px 0"><b>Più leggera:</b> ${esc(n.swaps.healthy)}</p>` : ''}
+      ${n.swaps.glutenFree ? `<p style="margin:4px 0"><b>Senza glutine:</b> ${esc(n.swaps.glutenFree)}</p>` : ''}
+      ${n.swaps.lactoseFree ? `<p style="margin:4px 0"><b>Senza lattosio:</b> ${esc(n.swaps.lactoseFree)}</p>` : ''}</div>` : ''}
+    <p class="small dim" style="margin:0">Valori stimati dall'AI su tabelle nutrizionali standard${n.assumptions && n.assumptions.length ? ' (ipotesi: ' + n.assumptions.map(esc).join('; ') + ')' : ''}. Sono indicativi e non sostituiscono il parere del medico, del diabetologo o del dietista. Calcolati il ${new Date(r.nutrition.date).toLocaleDateString('it-IT')}.
+      ${stale ? '' : `<a href="#" data-act="nutri" data-id="${r.id}">Ricalcola</a>`}</p>
+  </div>`;
 }
 
 /* ---------- Timer ---------- */
@@ -1338,6 +1589,8 @@ function recipeHtml(r, v) {
     <button class="iconbtn" data-act="rmenu" data-id="${r.id}" aria-label="Altro">${ic('more')}</button>
   </div>
   ${r.warnings.length ? `<div class="notice"><b>Da verificare:</b> ${r.warnings.map(esc).join(' · ')}</div>` : ''}
+  ${(() => { const c = profileConflicts(r); return c.length ? `<div class="prof-alert"><b>Attenzione al tuo profilo:</b> ${c.map(esc).join(' · ')}. <a href="#" data-act="go-nutri">Vedi valori e alternative</a></div>` : ''; })()}
+  ${dietProfile().diabete && r.nutrition && r.nutrition.data ? `<div class="metarow"><span class="meta-pill">${ic('gauge')} Carboidrati <b>${n1(r.nutrition.data.perPortion.carbs)} g</b> a porzione</span><span class="meta-pill"><b>${Math.round(r.nutrition.data.perPortion.kcal || 0)}</b> kcal</span></div>` : ''}
 
   ${(r.equipment.length || r.critical.length) ? `
   <div class="sectionhead"><span class="num">1</span><h2>Prima di iniziare</h2></div>
@@ -1363,6 +1616,9 @@ function recipeHtml(r, v) {
     ${r.notes ? `<div><h3>Consigli e varianti</h3><div class="prose">${esc(r.notes)}</div></div>` : ''}
     ${r.storage ? `<div><h3>Conservazione</h3><div class="prose">${esc(r.storage)}</div></div>` : ''}
   </div>` : ''}
+
+  <div id="nutri-sec"></div>
+  ${nutritionHtml(r, ((r.equipment.length || r.critical.length) ? 3 : 2) + ((r.notes || r.storage) ? 1 : 0) + 1)}
 
   <div class="card stack" style="margin-top:18px">
     ${r.source.url || r.source.author ? `<div class="small"><b>Fonte:</b> ${r.source.author ? esc(r.source.author) + ' · ' : ''}${r.source.url ? `<a href="${esc(safeUrl(r.source.url))}" target="_blank" rel="noopener">${esc(shortUrl(r.source.url))}</a>` : ''}</div>` : ''}
@@ -1412,6 +1668,8 @@ function recipeToText(r, k = 1) {
   if (r.critical.length) { L.push('', 'OCCHIO A'); r.critical.forEach((c) => L.push('⚠️ ' + c.problem + (c.fix ? ' → ' + c.fix : ''))); }
   if (r.notes) L.push('', 'NOTE', r.notes);
   if (r.storage) L.push('', 'CONSERVAZIONE', r.storage);
+  if (r.nutrition && r.nutrition.data && r.nutrition.data.perPortion) { const pp = r.nutrition.data.perPortion; L.push('', 'VALORI A PORZIONE (stima): ' + Math.round(pp.kcal || 0) + ' kcal · carboidrati ' + n1(pp.carbs) + ' g · proteine ' + n1(pp.protein) + ' g · grassi ' + n1(pp.fat) + ' g'); }
+  const alg = Object.keys(detectAllergens(r)); if (alg.length) L.push('Allergeni: ' + alg.join(', '));
   if (r.source.url) L.push('', 'Fonte: ' + r.source.url);
   L.push('', '— In Cucina con Paolo · GPverse');
   return L.join('\n');
@@ -1590,6 +1848,7 @@ async function edSave() {
   S.ed = null; S.edDirty = false;
   delete S.view[clean.id];
   toast('Ricetta salvata ✓');
+  if (AI.has() && settings.get('auto_nutri', true) && !nutriFresh(clean)) setTimeout(() => ensureNutrition(clean.id), 300);
   location.hash = '#/r/' + encodeURIComponent(clean.id);
 }
 
@@ -1652,7 +1911,8 @@ async function runImport(kind) {
       const url = ($('#impUrl').value || '').trim().match(/https?:\/\/\S+/)?.[0];
       if (!url) { toast('Incolla un link valido'); return; }
       S.importUrl = url;
-      r = await importFromUrl(url, log);
+      r = S.importPick ? await importWeb(url, log, S.importPick) : await importFromUrl(url, log);
+      S.importPick = null;
     } else if (kind === 'text') {
       const text = $('#impText').value.trim();
       if (text.length < 30) { toast('Incolla il testo della ricetta'); return; }
@@ -1668,6 +1928,7 @@ async function runImport(kind) {
     console.error(e);
     $('#impErr').innerHTML = `<div class="notice" style="margin-top:8px"><b>Non ci sono riuscito.</b> ${esc(e.message)}
       ${e.code === 'nokey' ? `<div style="margin-top:8px"><a class="btn sm primary" href="#/impostazioni">Inserisci la chiave AI</a></div>` : ''}
+      ${e.code === 'multi' ? `<div class="stack" style="margin-top:10px">${e.titles.map((t) => `<button class="btn block" style="justify-content:flex-start;text-align:left" data-act="imp-pick" data-t="${esc(t)}">${ic('chef')} ${esc(t)}</button>`).join('')}</div>` : ''}
       ${e.code === 'social' ? `<div class="row" style="margin-top:8px"><button class="btn sm" data-act="imp-tab" data-t="testo">${ic('text')} Usa Testo</button><button class="btn sm" data-act="imp-tab" data-t="foto">${ic('image')} Usa Foto</button></div>` : ''}</div>`;
   } finally { if (btn) btn.disabled = false; }
 }
@@ -1917,6 +2178,16 @@ function renderSettings(app) {
   </div>
 
   <div class="card stack" style="margin-top:16px">
+    <h2>Profilo alimentare</h2>
+    <p class="small dim" style="margin:0">Serve al nutrizionista: le ricette ti avvisano se contengono qualcosa che non va bene per te e i consigli si adattano.</p>
+    ${(() => { const pr = dietProfile(); return `
+    <div class="chips">${[['salutista', 'Mangio sano / leggero'], ['diabete', 'Diabete'], ['celiachia', 'Celiachia'], ['lattosio', 'Intolleranza al lattosio'], ['vegetariano', 'Vegetariano'], ['vegano', 'Vegano']].map(([k, l]) => `<span class="chip ${pr[k] ? 'on' : ''}" data-act="prof-flag" data-k="${k}">${l}</span>`).join('')}</div>
+    <div><h3>Allergie</h3><div class="chips">${ALLERGENS.map(([k]) => `<span class="chip ${pr.allergie.includes(k) ? 'on' : ''}" data-act="prof-al" data-v="${esc(k)}">${esc(k)}</span>`).join('')}</div></div>
+    <div class="row"><label for="kcalIn" class="grow" style="font-weight:600">Fabbisogno giornaliero (kcal)</label><input type="number" id="kcalIn" min="1000" max="5000" step="50" value="${pr.kcal}" style="width:110px"></div>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="autoNutri" ${settings.get('auto_nutri', true) ? 'checked' : ''}> Calcola i valori nutrizionali in automatico quando salvo una ricetta</label>`; })()}
+  </div>
+
+  <div class="card stack" style="margin-top:16px">
     <h2>Porzioni</h2>
     <div class="row"><label for="defPpl" class="grow" style="font-weight:600">Apri le ricette già calcolate per</label>
       <select id="defPpl" style="width:auto">${['0', '1', '2', '3', '4', '5', '6', '8', '10', '12'].map((n) => `<option value="${n}" ${String(settings.get('default_people', 0)) === n ? 'selected' : ''}>${n === '0' ? 'come scritto' : n + (n === '1' ? ' persona' : ' persone')}</option>`).join('')}</select></div>
@@ -1935,6 +2206,8 @@ function renderSettings(app) {
     <p class="small dim" style="margin-top:12px">In Cucina con Paolo · un progetto GPverse</p>
   </div>`;
   $('#bkIn').addEventListener('change', importBackup);
+  $('#kcalIn').addEventListener('change', (e) => { const pr = dietProfile(); const v = Math.round(+e.target.value); if (v >= 1000 && v <= 5000) { pr.kcal = v; settings.set('diet_profile', pr); toast('Fabbisogno: ' + v + ' kcal'); } else e.target.value = pr.kcal; });
+  $('#autoNutri').addEventListener('change', (e) => settings.set('auto_nutri', e.target.checked));
   $('#defPpl').addEventListener('change', (e) => { settings.set('default_people', +e.target.value); S.view = {}; toast(+e.target.value ? 'Le ricette si apriranno per ' + e.target.value : 'Dosi come scritte nella ricetta'); });
   $('#modelSel').addEventListener('change', (e) => { settings.set('gemini_model', e.target.value); toast('Modello: ' + e.target.value); });
   if (key) fillModels();
@@ -1989,6 +2262,10 @@ const ACT = {
   // vista ricetta
   'serv': (a) => { const v = S.view[a.dataset.id]; v.servings = Math.max(1, Math.min(200, Math.round(v.servings || 1) + +a.dataset.d)); rerenderRecipe(a.dataset.id); },
   'serv-reset': (a) => { const r = S.recipes.find((x) => x.id === a.dataset.id) || S.draft; S.view[a.dataset.id].servings = r.servings.amount; rerenderRecipe(a.dataset.id); },
+  'nutri': (a) => ensureNutrition(a.dataset.id, true),
+  'go-nutri': () => { const el = $('#nutri-sec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
+  'prof-flag': (a) => { const pr = dietProfile(); pr[a.dataset.k] = !pr[a.dataset.k]; settings.set('diet_profile', pr); a.classList.toggle('on'); },
+  'prof-al': (a) => { const pr = dietProfile(); const v = a.dataset.v; pr.allergie = pr.allergie.includes(v) ? pr.allergie.filter((x) => x !== v) : pr.allergie.concat(v); settings.set('diet_profile', pr); a.classList.toggle('on'); },
   'ck-serv': (a) => { const v = S.cook.v; v.servings = Math.max(1, Math.min(200, Math.round(v.servings || 1) + +a.dataset.d)); drawCook(); },
   'chk-ing': (a) => { const v = S.view[a.dataset.id]; v.ings[a.dataset.i] = !v.ings[a.dataset.i]; rerenderRecipe(a.dataset.id); },
   'chk-eq': (a) => { const v = S.view[a.dataset.id]; v.eq[a.dataset.i] = !v.eq[a.dataset.i]; rerenderRecipe(a.dataset.id); },
@@ -2070,7 +2347,8 @@ const ACT = {
   // import
   'imp-tab': (a) => { S.importTab = a.dataset.t; renderImport($('#app')); },
   'imp-paste': async () => { try { const t = await navigator.clipboard.readText(); $('#impUrl').value = (t.match(/https?:\/\/\S+/) || [t])[0]; } catch { toast('Tieni premuto nel campo e scegli Incolla'); } },
-  'imp-go': () => runImport('link'),
+  'imp-go': () => { S.importPick = null; runImport('link'); },
+  'imp-pick': (a) => { S.importPick = a.dataset.t; runImport('link'); },
   'imp-text': () => runImport('text'),
   'imp-photo': () => runImport('photo'),
   // frigo
