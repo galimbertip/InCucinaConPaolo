@@ -6,7 +6,8 @@ Ricettario personale in formato unico, installabile come app.
 - **Importa** da link: siti di ricette, YouTube, TikTok, Instagram, Facebook — oppure da testo o foto/screenshot
 - **Svuota frigo**: ingredienti, strumenti, tempo e persone → idee, con "Altre idee" e "Fammi la ricetta"
 - **Modalità cucina**: un passaggio per schermata, timer, schermo sempre acceso, pulsante "Aiuto!"
-- **Nutrizionista**: valori a porzione e per 100 g, % giornaliera, quanto mangiarne (pasto/spuntino), sezione diabetici (carboidrati, indice e carico glicemico), 14 allergeni UE, profilo alimentare con avvisi e alternative
+- **Nutrizionista**: valori a porzione e per 100 g, % giornaliera, quanto mangiarne (pasto/spuntino), sezione diabetici (carboidrati, indice e carico glicemico), 14 allergeni UE, avvisi e alternative
+- **Esigenze a tavola** per ogni ricetta: diabete, celiachia, lattosio, vegetariani/vegani, allergie e note sugli ospiti
 - **Controllo dosi**: dopo la conversione AI le quantità vengono verificate sul testo originale
 - **Raccolte di ricette**: se un link contiene più ricette, scegli quale importare
 

@@ -3,6 +3,11 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.4.0 — 22 ottobre 2026
+    - Esigenze a tavola impostate per singola ricetta (ospiti diversi a
+      ogni occasione), con avvisi e consigli "Per i tuoi ospiti".
+    - Tolto il profilo alimentare generale dalle Impostazioni.
+
   v1.3.0 — 22 ottobre 2026
     - Versioni visibili in app (schema V.MAJOR.MINOR.PATCH): numero in
       testata, cronologia con tipo di aggiornamento, finestra "Novità"
@@ -159,7 +164,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 textarea{min-height:80px;resize:vertical;line-height:1.45}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel-2);border-radius:999px;padding:6px 12px;font-size:.86rem;font-weight:500;cursor:pointer;user-select:none;line-height:1.2}
-.chip.on{background:color-mix(in srgb,var(--accent) 18%,var(--panel));border-color:var(--accent);color:var(--text)}
+.chip.on{background:color-mix(in srgb,var(--accent) 22%,var(--panel));border-color:var(--accent);color:var(--text);font-weight:700;box-shadow:inset 0 0 0 1px var(--accent)}
 .chip .x{opacity:.6;font-weight:700}
 .chip svg{width:14px;height:14px}
 .seg{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
@@ -284,6 +289,10 @@ table.nutri tr.sub td:first-child{padding-left:18px;color:var(--dim)}
 .chip.no{opacity:.7;text-decoration:line-through}
 .prof-alert{margin-top:12px;border-radius:12px;padding:12px 14px;background:color-mix(in srgb,var(--bad) 12%,var(--panel));border:1px solid color-mix(in srgb,var(--bad) 45%,transparent);font-size:.93rem}
 .prof-alert b{color:var(--bad)}
+.needsbar{display:flex;gap:10px;align-items:center;width:100%;text-align:left;margin-top:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;font-size:.9rem;color:var(--text)}
+.needsbar>svg{width:18px;height:18px;color:var(--accent);flex:none}
+.needsbar>span:not(.ed){flex:1}
+.needsbar .ed svg{width:16px;height:16px;color:var(--dim)}
 
 /* Editor */
 .ed-sec{margin-top:18px}
@@ -450,8 +459,13 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 const CHANGELOG = [
+  { v: '1.4.0', d: '22 ottobre 2026', items: [
+    'Esigenze a tavola per ogni ricetta: diabete, celiachia, lattosio, vegetariani/vegani, leggero e le 14 allergie, più una nota libera sugli ospiti (es. "Marco celiaco").',
+    'Gli avvisi in cima alla ricetta e nella mise en place si basano sugli ospiti di quella ricetta; il nutrizionista aggiunge "Per i tuoi ospiti" con le modifiche da fare.',
+    'Il profilo alimentare generale è stato tolto dalle Impostazioni (resta solo il fabbisogno di riferimento).'
+  ]},
   { v: '1.3.0', d: '22 ottobre 2026', items: [
     'Versioni visibili in app con lo schema V.MAJOR.MINOR.PATCH: numero di versione in testata, cronologia con il tipo di ogni aggiornamento.',
     'Finestra "Novità" che si apre da sola la prima volta dopo un aggiornamento, con le modifiche dall\'ultima versione che hai usato.'
@@ -1262,28 +1276,34 @@ function detectAllergens(r) {
   });
   return found;
 }
-const PROFILE_DEFAULT = { salutista: false, diabete: false, celiachia: false, lattosio: false, vegetariano: false, vegano: false, allergie: [], kcal: 2000 };
-function dietProfile() { return Object.assign({}, PROFILE_DEFAULT, settings.get('diet_profile', {})); }
-function profileText(pr) {
-  const a = [];
-  if (pr.salutista) a.push('vuole mangiare sano e leggero'); if (pr.diabete) a.push('ha il diabete'); if (pr.celiachia) a.push('è celiaco');
-  if (pr.lattosio) a.push('è intollerante al lattosio'); if (pr.vegetariano) a.push('è vegetariano'); if (pr.vegano) a.push('è vegano');
-  if (pr.allergie.length) a.push('è allergico a: ' + pr.allergie.join(', '));
-  return a.length ? 'Chi cucina ' + a.join('; ') + '. Fabbisogno di riferimento: ' + pr.kcal + ' kcal al giorno.' : 'Fabbisogno di riferimento: ' + pr.kcal + ' kcal al giorno.';
+/* Esigenze a tavola: si impostano per ricetta (ospiti diversi a ogni occasione) */
+const NEEDS_DEFAULT = { salutista: false, diabete: false, celiachia: false, lattosio: false, vegetariano: false, vegano: false, allergie: [], note: '' };
+const NEEDS_FLAGS = [['diabete', 'Diabete'], ['celiachia', 'Celiachia'], ['lattosio', 'Intolleranza al lattosio'], ['vegetariano', 'Vegetariani'], ['vegano', 'Vegani'], ['salutista', 'Leggero / salutista']];
+function recipeNeeds(r) { const n = Object.assign({}, NEEDS_DEFAULT, (r && r.diners) || {}); n.allergie = Array.isArray(n.allergie) ? n.allergie : []; return n; }
+function needsList(n) { return NEEDS_FLAGS.filter(([k]) => n[k]).map(([, l]) => l.toLowerCase()).concat(n.allergie.map((a) => 'allergia: ' + a)); }
+function kcalRef() { return +settings.get('kcal_ref', 0) || +(settings.get('diet_profile', {}) || {}).kcal || 2000; }
+function profileText(n) {
+  const a = needsList(n);
+  return (a.length ? 'A tavola ci sono persone con queste esigenze: ' + a.join('; ') + '.' : 'Nessuna esigenza alimentare particolare indicata.') + (n.note ? ' Note sugli ospiti: ' + n.note + '.' : '') + ' Fabbisogno di riferimento: ' + kcalRef() + ' kcal al giorno.';
 }
 function profileConflicts(r) {
-  const pr = dietProfile(); const al = detectAllergens(r); const out = [];
+  const pr = recipeNeeds(r); const al = detectAllergens(r); const out = [];
   const n = r.nutrition && r.nutrition.data;
   if (pr.celiachia && al.glutine) out.push('glutine (' + al.glutine.join(', ') + ')');
   if (pr.lattosio && al.latte) out.push('lattosio (' + al.latte.join(', ') + ')');
-  pr.allergie.forEach((x) => { if (al[x]) out.push(x + ' (' + al[x].join(', ') + ')'); });
+  const aiAl = (n && Array.isArray(n.allergens)) ? n.allergens : [];
+  pr.allergie.forEach((x) => {
+    if (al[x]) { out.push(x + ' (' + al[x].join(', ') + ')'); return; }
+    const t = aiAl.find((a) => normTxt(a.name) === normTxt(x));
+    if (t) out.push(x + ' (' + (t.status === 'tracce' ? 'possibili tracce' : 'contiene') + (t.from ? ': ' + t.from : '') + ')');
+  });
   if (n && n.suitableFor) {
     if (pr.vegano && n.suitableFor.vegani === false) out.push('non è vegana');
     else if (pr.vegetariano && n.suitableFor.vegetariani === false) out.push('non è vegetariana');
   }
   return out;
 }
-function nutriKey(r) { return JSON.stringify([r.servings.amount, allIngredients(r).map((i) => [i.name, i.qty, i.unit])]); }
+function nutriKey(r) { const n = recipeNeeds(r); return JSON.stringify([r.servings.amount, allIngredients(r).map((i) => [i.name, i.qty, i.unit]), needsList(n), n.note]); }
 function nutriFresh(r) { return r.nutrition && r.nutrition.key === nutriKey(r); }
 const NUTRI_RULES = `Sei un nutrizionista e dietista italiano. Stima i valori nutrizionali della ricetta usando le tabelle CREA (o USDA) per ogni ingrediente, considerando cotture e assorbimento d'olio di frittura in modo realistico. Gli ingredienti "q.b." contali in quantità tipiche e indica l'ipotesi. Gli ingredienti facoltativi NON vanno contati.
 Rispondi SOLO con JSON:
@@ -1296,6 +1316,7 @@ Rispondi SOLO con JSON:
  "diabetes": {"carbsPortion": 0, "advice": "consigli pratici: porzione, abbinamenti per abbassare il picco glicemico, sostituzioni"},
  "allergens": [{"name": "uno dei 14 allergeni UE in italiano: glutine, crostacei, uova, pesce, arachidi, soia, latte, frutta a guscio, sedano, senape, sesamo, solfiti, lupini, molluschi", "status": "contiene|tracce", "from": "ingredienti responsabili"}],
  "suitableFor": {"celiaci": false, "intolleranti al lattosio": false, "vegetariani": true, "vegani": false},
+ "guestAdvice": "se sono indicate esigenze degli ospiti: cosa cambiare in QUESTA ricetta perché vada bene per tutti (sostituzioni con dosi), altrimenti stringa vuota",
  "swaps": {"healthy": "come renderla più leggera", "glutenFree": "come farla senza glutine, o stringa vuota se già lo è", "lactoseFree": "come farla senza lattosio, o stringa vuota se già lo è"},
  "assumptions": ["ipotesi fatte"]
 }
@@ -1303,7 +1324,7 @@ Valori in grammi (sale in grammi, energia in kcal) arrotondati a 1 decimale. "tr
 async function computeNutrition(r) {
   const ings = r.components.map((c) => (c.name ? c.name + ':\n' : '') + c.ingredients.map((i) => '- ' + [i.qty != null ? fmtQty(i.qty, i.unit) : '', unitLabel(i.unit, i.qty), i.name].filter(Boolean).join(' ') + (i.prep ? ', ' + i.prep : '') + (i.optional ? ' (facoltativo)' : '')).join('\n')).join('\n');
   const steps = r.phases.flatMap((p) => p.steps.map((s) => s.text)).join(' ').slice(0, 3000);
-  const res = await AI.generate({ system: NUTRI_RULES, temperature: 0.2, parts: [{ text: `Ricetta: ${r.title} (${r.category}) per ${r.servings.amount} ${r.servings.unit}.\nIngredienti:\n${ings}\nProcedimento in breve: ${steps}\n\n${profileText(dietProfile())}` }] });
+  const res = await AI.generate({ system: NUTRI_RULES, temperature: 0.2, parts: [{ text: `Ricetta: ${r.title} (${r.category}) per ${r.servings.amount} ${r.servings.unit}.\nIngredienti:\n${ings}\nProcedimento in breve: ${steps}\n\n${profileText(recipeNeeds(r))}` }] });
   if (!res.data || !res.data.perPortion) throw new Error('Non sono riuscito a calcolare i valori, riprova.');
   return { key: nutriKey(r), date: Date.now(), data: res.data };
 }
@@ -1317,8 +1338,37 @@ async function ensureNutrition(id, force) {
 }
 const RI = { kcal: 2000, fat: 70, satFat: 20, carbs: 260, sugars: 90, protein: 50, salt: 6, fiber: 25 };
 function n1(x) { return x == null || isNaN(x) ? '—' : String(Math.round(x * 10) / 10).replace('.', ','); }
+function needsBarHtml(r) {
+  const n = recipeNeeds(r); const l = needsList(n);
+  return `<button class="needsbar" data-act="needs" data-id="${r.id}">${ic('users')}<span><b>Esigenze a tavola:</b> ${l.length ? esc(l.join(', ')) : '<span class="dim">nessuna</span>'}${n.note ? ` <span class="dim">· ${esc(n.note)}</span>` : ''}</span><span class="ed">${ic('edit')}</span></button>`;
+}
+function getRecipe(id) { return S.recipes.find((x) => x.id === id) || (S.draft && S.draft.id === id ? S.draft : null); }
+function openNeeds(id) {
+  const r = getRecipe(id); if (!r) return;
+  const n = recipeNeeds(r);
+  const m = openModal('Esigenze a tavola', `
+    <p class="small dim" style="margin-top:0">Chi mangia questa ricetta? Vale solo per questa ricetta: l'app ti avvisa se qualcosa non va bene e il nutrizionista ti dice come adattarla.</p>
+    <div class="chips" id="ndFlags">${NEEDS_FLAGS.map(([k, l]) => `<span class="chip ${n[k] ? 'on' : ''}" data-k="${k}">${l}</span>`).join('')}</div>
+    <h3 style="margin-top:14px">Allergie</h3>
+    <div class="chips" id="ndAl">${ALLERGENS.map(([k]) => `<span class="chip ${n.allergie.includes(k) ? 'on' : ''}" data-v="${esc(k)}">${esc(k)}</span>`).join('')}</div>
+    <h3 style="margin-top:14px">Note sugli ospiti</h3>
+    <input type="text" id="ndNote" value="${esc(n.note)}" placeholder="Es. Marco celiaco, la nonna senza sale, 2 bambini">
+    <div class="row" style="margin-top:14px"><button class="btn grow" id="ndClear">Nessuna esigenza</button><button class="btn primary grow" id="ndSave">${ic('check')} Salva</button></div>`, (m) => {
+    $$('#ndFlags .chip, #ndAl .chip', m).forEach((c) => (c.onclick = () => c.classList.toggle('on')));
+    const save = async (clear) => {
+      const d = { allergie: [], note: '' };
+      if (!clear) { $$('#ndFlags .chip', m).forEach((c) => (d[c.dataset.k] = c.classList.contains('on'))); d.allergie = $$('#ndAl .chip.on', m).map((c) => c.dataset.v); d.note = $('#ndNote', m).value.trim(); }
+      r.diners = d;
+      if (S.recipes.some((x) => x.id === r.id)) await DB.put(r);
+      closeModal(); rerenderRecipe(r.id);
+      if (AI.has() && r.nutrition && !nutriFresh(r) && S.recipes.some((x) => x.id === r.id)) ensureNutrition(r.id);
+    };
+    $('#ndSave', m).onclick = () => save(false);
+    $('#ndClear', m).onclick = () => save(true);
+  });
+}
 function nutritionHtml(r, num) {
-  const pr = dietProfile();
+  const pr = recipeNeeds(r);
   const al = detectAllergens(r);
   const n = r.nutrition && r.nutrition.data;
   const busy = nutriBusy.has(r.id);
@@ -1340,13 +1390,13 @@ function nutritionHtml(r, num) {
   const pp = n.perPortion || {}; const g = +n.portionGrams || 0;
   const per100 = (x) => (g ? (x * 100) / g : null);
   const rows = [['Energia', 'kcal', 'kcal'], ['Grassi', 'fat', 'g'], ['  di cui saturi', 'satFat', 'g'], ['Carboidrati', 'carbs', 'g'], ['  di cui zuccheri', 'sugars', 'g'], ['Fibre', 'fiber', 'g'], ['Proteine', 'protein', 'g'], ['Sale', 'salt', 'g']];
-  const kref = pr.kcal || 2000;
+  const kref = kcalRef();
   const ri = (k) => (RI[k] ? Math.round(((pp[k] || 0) / (RI[k] * (k === 'fiber' || k === 'salt' ? 1 : kref / 2000))) * 100) : null);
   const suit = n.suitableFor || {};
   const stale = !nutriFresh(r);
   const gi = n.glycemic || {}; const giCls = { basso: 'ok', medio: 'mid', alto: 'hi' }[gi.index] || 'mid';
   return head + `<div class="card stack">
-    ${stale ? `<div class="notice"><b>Ingredienti cambiati:</b> i valori potrebbero non essere aggiornati. <button class="btn sm" data-act="nutri" data-id="${r.id}" ${busy ? 'disabled' : ''}>${ic('refresh')} Ricalcola</button></div>` : ''}
+    ${stale ? `<div class="notice"><b>Ingredienti o esigenze cambiati:</b> i valori e i consigli potrebbero non essere aggiornati. <button class="btn sm" data-act="nutri" data-id="${r.id}" ${busy ? 'disabled' : ''}>${ic('refresh')} Ricalcola</button></div>` : ''}
     <div class="nutri-kpi">
       <div><b>${Math.round(pp.kcal || 0)}</b><span>kcal a porzione</span></div>
       <div><b>${n1(pp.carbs)} g</b><span>carboidrati</span></div>
@@ -1374,6 +1424,7 @@ function nutritionHtml(r, num) {
 
     ${allergenBox}
     <div><h3>Adatta a</h3><div class="chips">${Object.entries(suit).map(([k, v]) => `<span class="chip ${v === true ? 'ok' : v === false ? 'no' : ''}">${v === true ? '✓' : v === false ? '✗' : '~'} ${esc(k)}</span>`).join('')}</div></div>
+    ${n.guestAdvice && needsList(pr).length ? `<div class="diab me"><h3>Per i tuoi ospiti</h3><p style="margin:0">${esc(n.guestAdvice)}</p></div>` : ''}
     ${n.swaps && (n.swaps.healthy || n.swaps.glutenFree || n.swaps.lactoseFree) ? `<div><h3>Come adattarla</h3>
       ${n.swaps.healthy ? `<p style="margin:4px 0"><b>Più leggera:</b> ${esc(n.swaps.healthy)}</p>` : ''}
       ${n.swaps.glutenFree ? `<p style="margin:4px 0"><b>Senza glutine:</b> ${esc(n.swaps.glutenFree)}</p>` : ''}
@@ -1661,8 +1712,9 @@ function recipeHtml(r, v) {
     <button class="iconbtn" data-act="rmenu" data-id="${r.id}" aria-label="Altro">${ic('more')}</button>
   </div>
   ${r.warnings.length ? `<div class="notice"><b>Da verificare:</b> ${r.warnings.map(esc).join(' · ')}</div>` : ''}
-  ${(() => { const c = profileConflicts(r); return c.length ? `<div class="prof-alert"><b>Attenzione al tuo profilo:</b> ${c.map(esc).join(' · ')}. <a href="#" data-act="go-nutri">Vedi valori e alternative</a></div>` : ''; })()}
-  ${dietProfile().diabete && r.nutrition && r.nutrition.data ? `<div class="metarow"><span class="meta-pill">${ic('gauge')} Carboidrati <b>${n1(r.nutrition.data.perPortion.carbs)} g</b> a porzione</span><span class="meta-pill"><b>${Math.round(r.nutrition.data.perPortion.kcal || 0)}</b> kcal</span></div>` : ''}
+  ${needsBarHtml(r)}
+  ${(() => { const c = profileConflicts(r); return c.length ? `<div class="prof-alert"><b>Attenzione, non va bene per i tuoi ospiti:</b> ${c.map(esc).join(' · ')}. <a href="#" data-act="go-nutri">Vedi alternative</a></div>` : ''; })()}
+  ${recipeNeeds(r).diabete && r.nutrition && r.nutrition.data ? `<div class="metarow"><span class="meta-pill">${ic('gauge')} Carboidrati <b>${n1(r.nutrition.data.perPortion.carbs)} g</b> a porzione</span><span class="meta-pill"><b>${Math.round(r.nutrition.data.perPortion.kcal || 0)}</b> kcal</span></div>` : ''}
 
   ${(r.equipment.length || r.critical.length) ? `
   <div class="sectionhead"><span class="num">1</span><h2>Prima di iniziare</h2></div>
@@ -2138,6 +2190,7 @@ function drawCook() {
     label = 'Mise en place';
     body = `<div class="phase-l">Prima di accendere il fuoco</div>
       <div class="big">Prepara tutto sul piano di lavoro.</div>
+      ${(() => { const cf = profileConflicts(r); return cf.length ? `<div class="prof-alert" style="margin-bottom:12px"><b>Occhio agli ospiti:</b> ${cf.map(esc).join(' · ')}</div>` : ''; })()}
       ${r.equipment.length ? `<h3>Attrezzatura</h3><ul class="checklist">${r.equipment.map((e, i) => `<li class="${v.eq[i] ? 'done' : ''}" data-act="ck-eq" data-i="${i}"><span class="box">${ic('check')}</span><span class="t">${esc(e)}</span></li>`).join('')}</ul>` : ''}
       <h3 style="margin-top:14px">Per quante ${/^(persone|porzioni)$/i.test(r.servings.unit) ? r.servings.unit : 'porzioni'} cucini?</h3>
       <div style="margin-bottom:10px">${servingsCtl(r, v, 'ck-serv')}</div>
@@ -2250,13 +2303,10 @@ function renderSettings(app) {
   </div>
 
   <div class="card stack" style="margin-top:16px">
-    <h2>Profilo alimentare</h2>
-    <p class="small dim" style="margin:0">Serve al nutrizionista: le ricette ti avvisano se contengono qualcosa che non va bene per te e i consigli si adattano.</p>
-    ${(() => { const pr = dietProfile(); return `
-    <div class="chips">${[['salutista', 'Mangio sano / leggero'], ['diabete', 'Diabete'], ['celiachia', 'Celiachia'], ['lattosio', 'Intolleranza al lattosio'], ['vegetariano', 'Vegetariano'], ['vegano', 'Vegano']].map(([k, l]) => `<span class="chip ${pr[k] ? 'on' : ''}" data-act="prof-flag" data-k="${k}">${l}</span>`).join('')}</div>
-    <div><h3>Allergie</h3><div class="chips">${ALLERGENS.map(([k]) => `<span class="chip ${pr.allergie.includes(k) ? 'on' : ''}" data-act="prof-al" data-v="${esc(k)}">${esc(k)}</span>`).join('')}</div></div>
-    <div class="row"><label for="kcalIn" class="grow" style="font-weight:600">Fabbisogno giornaliero (kcal)</label><input type="number" id="kcalIn" min="1000" max="5000" step="50" value="${pr.kcal}" style="width:110px"></div>
-    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="autoNutri" ${settings.get('auto_nutri', true) ? 'checked' : ''}> Calcola i valori nutrizionali in automatico quando salvo una ricetta</label>`; })()}
+    <h2>Nutrizionista</h2>
+    <p class="small dim" style="margin:0">Le esigenze alimentari (diabete, celiachia, allergie…) si impostano in ogni ricetta, con "Esigenze a tavola", perché cambiano a seconda degli ospiti.</p>
+    <div class="row"><label for="kcalIn" class="grow" style="font-weight:600">Fabbisogno di riferimento (kcal/giorno)</label><input type="number" id="kcalIn" min="1000" max="5000" step="50" value="${kcalRef()}" style="width:110px"></div>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="autoNutri" ${settings.get('auto_nutri', true) ? 'checked' : ''}> Calcola i valori nutrizionali in automatico quando salvo una ricetta</label>
   </div>
 
   <div class="card stack" style="margin-top:16px">
@@ -2280,7 +2330,7 @@ function renderSettings(app) {
     <p class="small dim" style="margin-top:12px">In Cucina con Paolo · un progetto GPverse</p>
   </div>`;
   $('#bkIn').addEventListener('change', importBackup);
-  $('#kcalIn').addEventListener('change', (e) => { const pr = dietProfile(); const v = Math.round(+e.target.value); if (v >= 1000 && v <= 5000) { pr.kcal = v; settings.set('diet_profile', pr); toast('Fabbisogno: ' + v + ' kcal'); } else e.target.value = pr.kcal; });
+  $('#kcalIn').addEventListener('change', (e) => { const v = Math.round(+e.target.value); if (v >= 1000 && v <= 5000) { settings.set('kcal_ref', v); toast('Fabbisogno: ' + v + ' kcal'); } else e.target.value = kcalRef(); });
   $('#autoNutri').addEventListener('change', (e) => settings.set('auto_nutri', e.target.checked));
   $('#defPpl').addEventListener('change', (e) => { settings.set('default_people', +e.target.value); S.view = {}; toast(+e.target.value ? 'Le ricette si apriranno per ' + e.target.value : 'Dosi come scritte nella ricetta'); });
   $('#modelSel').addEventListener('change', (e) => { settings.set('gemini_model', e.target.value); toast('Modello: ' + e.target.value); });
@@ -2339,8 +2389,7 @@ const ACT = {
   'serv-reset': (a) => { const r = S.recipes.find((x) => x.id === a.dataset.id) || S.draft; S.view[a.dataset.id].servings = r.servings.amount; rerenderRecipe(a.dataset.id); },
   'nutri': (a) => ensureNutrition(a.dataset.id, true),
   'go-nutri': () => { const el = $('#nutri-sec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
-  'prof-flag': (a) => { const pr = dietProfile(); pr[a.dataset.k] = !pr[a.dataset.k]; settings.set('diet_profile', pr); a.classList.toggle('on'); },
-  'prof-al': (a) => { const pr = dietProfile(); const v = a.dataset.v; pr.allergie = pr.allergie.includes(v) ? pr.allergie.filter((x) => x !== v) : pr.allergie.concat(v); settings.set('diet_profile', pr); a.classList.toggle('on'); },
+  'needs': (a) => openNeeds(a.dataset.id),
   'ck-serv': (a) => { const v = S.cook.v; v.servings = Math.max(1, Math.min(200, Math.round(v.servings || 1) + +a.dataset.d)); drawCook(); },
   'chk-ing': (a) => { const v = S.view[a.dataset.id]; v.ings[a.dataset.i] = !v.ings[a.dataset.i]; rerenderRecipe(a.dataset.id); },
   'chk-eq': (a) => { const v = S.view[a.dataset.id]; v.eq[a.dataset.i] = !v.eq[a.dataset.i]; rerenderRecipe(a.dataset.id); },
