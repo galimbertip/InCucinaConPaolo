@@ -3,6 +3,11 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.3.0 — 22 ottobre 2026
+    - Versioni visibili in app (schema V.MAJOR.MINOR.PATCH): numero in
+      testata, cronologia con tipo di aggiornamento, finestra "Novità"
+      automatica dopo ogni aggiornamento.
+
   v1.2.0 — 22 ottobre 2026
     - Controllo automatico delle dosi sul testo originale dopo la
       conversione AI (es. "1 cucchiaio di latte" non diventa più 2).
@@ -100,6 +105,23 @@ button,input,select,textarea{font:inherit;color:inherit}
 .brand{font-weight:700;font-size:1.08rem;line-height:1.1}
 .brand small{display:block;font-weight:500;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#3fe0f0;opacity:.85}
 .mast .back{margin-left:auto}
+.verbtn{font:inherit;letter-spacing:.06em;color:#3fe0f0;background:rgba(63,224,240,.12);border:1px solid rgba(63,224,240,.35);border-radius:6px;padding:0 6px;margin-left:2px;cursor:pointer;text-transform:none}
+.verbtn.new{background:#3fe0f0;color:#04121a;font-weight:700}
+.ver{border-left:3px solid var(--line);padding:2px 0 2px 12px;margin-top:14px}
+.ver:first-of-type{margin-top:4px}
+.ver h4{margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:"Space Grotesk",system-ui,sans-serif}
+.ver ul{margin:6px 0 0;padding-left:18px;font-size:.92rem}
+.ver.t-MAJOR{border-color:var(--bad)} .ver.t-MINOR{border-color:var(--accent)} .ver.t-PATCH{border-color:var(--ok)}
+.vtag{font-size:.68rem;font-weight:700;letter-spacing:.08em;border-radius:6px;padding:1px 7px;font-family:"Space Grotesk",system-ui,sans-serif}
+.vtag.MAJOR{background:color-mix(in srgb,var(--bad) 18%,var(--panel));color:var(--bad)}
+.vtag.MINOR{background:color-mix(in srgb,var(--accent) 18%,var(--panel));color:var(--accent)}
+.vtag.PATCH{background:color-mix(in srgb,var(--ok) 18%,var(--panel));color:var(--ok)}
+.vtag.CUR{background:var(--text);color:var(--bg)}
+.vscheme{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:.88rem;align-items:center;margin:4px 0 6px}
+.vnum{font-family:"Space Grotesk",system-ui,sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:.02em;text-align:center;margin:4px 0}
+.vnum span{padding:0 2px} .vnum .a{color:var(--bad)} .vnum .b{color:var(--accent)} .vnum .c{color:var(--ok)}
+.homever{text-align:center;margin:26px 0 0;font-size:.82rem}
+.homever button{background:none;border:0;color:var(--dim);cursor:pointer;font:inherit;text-decoration:underline}
 .mast .iconbtn{color:#eaf3fb;border-color:rgba(234,243,251,.2)}
 
 /* Bottom nav */
@@ -362,7 +384,7 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 <header class="mast">
   <div class="wrap">
     <a href="#/" aria-label="Home"><img src="icons/gpverse-logo.jpg" alt="GPverse"></a>
-    <div class="brand">In Cucina con Paolo<small>GPverse</small></div>
+    <div class="brand">In Cucina con Paolo<small>GPverse · <button class="verbtn" data-act="versions" id="verBtn" aria-label="Versioni e novità">v—</button></small></div>
     <div class="back" id="mastAction"></div>
   </div>
 </header>
@@ -428,8 +450,12 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const CHANGELOG = [
+  { v: '1.3.0', d: '22 ottobre 2026', items: [
+    'Versioni visibili in app con lo schema V.MAJOR.MINOR.PATCH: numero di versione in testata, cronologia con il tipo di ogni aggiornamento.',
+    'Finestra "Novità" che si apre da sola la prima volta dopo un aggiornamento, con le modifiche dall\'ultima versione che hai usato.'
+  ]},
   { v: '1.2.0', d: '22 ottobre 2026', items: [
     'Controllo automatico delle dosi: dopo la conversione con l\'AI le quantità vengono confrontate con il testo originale e, se diverse, corrette (con avviso).',
     'Lettura dei link più robusta: se il sito blocca la lettura, l\'AI prova ad aprire la pagina direttamente.',
@@ -1395,6 +1421,50 @@ function beep() {
   } catch {}
 }
 
+/* ---------- Versioni (V.MAJOR.MINOR.PATCH) ---------- */
+function verParts(v) { return String(v || '0.0.0').split('.').map((x) => parseInt(x, 10) || 0); }
+function verCmp(a, b) { const x = verParts(a), y = verParts(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i]; return 0; }
+function verType(i) {
+  const cur = verParts(CHANGELOG[i].v), prev = CHANGELOG[i + 1] ? verParts(CHANGELOG[i + 1].v) : null;
+  if (!prev) return 'MAJOR';
+  return cur[0] !== prev[0] ? 'MAJOR' : cur[1] !== prev[1] ? 'MINOR' : 'PATCH';
+}
+const VER_LABEL = { MAJOR: 'MAJOR · grande cambiamento', MINOR: 'MINOR · nuove funzioni', PATCH: 'PATCH · correzioni' };
+function versionsHtml(onlyNewerThan) {
+  return CHANGELOG.map((c, i) => {
+    if (onlyNewerThan && verCmp(c.v, onlyNewerThan) <= 0) return '';
+    const t = verType(i);
+    return `<div class="ver t-${t}"><h4>v${esc(c.v)} <span class="vtag ${t}">${t === 'MAJOR' && i === CHANGELOG.length - 1 ? 'MAJOR · prima versione' : VER_LABEL[t]}</span>${c.v === APP_VERSION ? '<span class="vtag CUR">in uso</span>' : ''}<span class="dim small">${esc(c.d)}</span></h4><ul>${c.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+  }).join('');
+}
+function versionSchemeHtml() {
+  const [a, b, c] = verParts(APP_VERSION);
+  return `<div class="vnum">V<span class="a">${a}</span>.<span class="b">${b}</span>.<span class="c">${c}</span></div>
+    <div class="vscheme">
+      <span class="vtag MAJOR">MAJOR</span><span>cambia quando l'app cambia in modo profondo (nuova struttura, dati da convertire)</span>
+      <span class="vtag MINOR">MINOR</span><span>cambia quando arrivano nuove funzioni</span>
+      <span class="vtag PATCH">PATCH</span><span>cambia per correzioni e piccoli ritocchi</span>
+    </div>`;
+}
+function openVersions() {
+  openModal('Versioni', versionSchemeHtml() + '<h3 style="margin:14px 0 0">Cronologia</h3>' + versionsHtml());
+  settings.set('seen_version', APP_VERSION); markVer();
+}
+function markVer() {
+  const b = $('#verBtn'); if (!b) return;
+  b.textContent = 'v' + APP_VERSION;
+  const seen = settings.get('seen_version', null);
+  b.classList.toggle('new', !!seen && verCmp(APP_VERSION, seen) > 0);
+}
+function showWhatsNew() {
+  const seen = settings.get('seen_version', null);
+  if (!seen) { settings.set('seen_version', APP_VERSION); return; }   // prima installazione: niente popup
+  if (verCmp(APP_VERSION, seen) <= 0) return;
+  openModal('Novità · v' + APP_VERSION, `<p class="dim small" style="margin-top:0">Aggiornata dalla v${esc(seen)}. Ecco cosa è cambiato:</p>` + versionsHtml(seen) +
+    `<button class="btn primary block" style="margin-top:16px" data-act="modal-close">Ho capito</button>`);
+  settings.set('seen_version', APP_VERSION);
+}
+
 /* ---------- Modale ---------- */
 function openModal(title, html, onMount) {
   closeModal();
@@ -1480,13 +1550,15 @@ function renderHome(app) {
         <option value="recent">Più recenti</option><option value="az">A → Z</option><option value="cooked">Più cucinate</option><option value="quick">Più veloci</option>
       </select>
     </div>
-    <div class="grid" id="grid"></div>` : `
+    <div class="grid" id="grid"></div>
+    <p class="homever"><button data-act="versions">In Cucina con Paolo v${APP_VERSION} · novità</button></p>` : `
     <div class="card empty" style="margin-top:6px">
       <div style="color:var(--accent);margin-bottom:8px">${ic('pot').replace('<svg', '<svg style="width:56px;height:56px;margin:auto"')}</div>
       <h2 style="color:var(--text)">Il tuo ricettario è vuoto</h2>
       <p>Inizia scrivendo una ricetta tua, incollando un link (anche di un video) oppure facendoti dare un'idea da Svuota frigo.</p>
       ${!AI.has() ? `<p class="small">Consiglio: inserisci prima la <a href="#/impostazioni">chiave AI gratuita</a>, serve per convertire video e post.</p>` : ''}
-    </div>`}`;
+    </div>
+    <p class="homever"><button data-act="versions">In Cucina con Paolo v${APP_VERSION} · novità</button></p>`}`;
   if (!S.recipes.length) return;
   $('#sort').value = S.filter.sort;
   $('#q').addEventListener('input', (e) => { S.filter.q = e.target.value; drawGrid(); });
@@ -2201,8 +2273,10 @@ function renderSettings(app) {
   </div>
 
   <div class="card version-list" style="margin-top:16px">
-    <h2>Versione ${APP_VERSION}</h2>
-    ${CHANGELOG.map((c) => `<h4>v${c.v} <span class="dim small">— ${c.d}</span></h4><ul>${c.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}
+    <h2>Versione</h2>
+    ${versionSchemeHtml()}
+    <h3 style="margin:14px 0 0">Cronologia</h3>
+    ${versionsHtml()}
     <p class="small dim" style="margin-top:12px">In Cucina con Paolo · un progetto GPverse</p>
   </div>`;
   $('#bkIn').addEventListener('change', importBackup);
@@ -2254,6 +2328,7 @@ function applyTheme() {
 const ACT = {
   'go-back': () => { if (history.length > 1) history.back(); else location.hash = '#/'; },
   'modal-close': () => closeModal(),
+  'versions': () => openVersions(),
   'timer': (a) => Timers.add(a.dataset.label || 'Timer', +a.dataset.min),
   'timer-stop': (a) => Timers.remove(a.dataset.id),
   // home
@@ -2459,6 +2534,7 @@ window.addEventListener('beforeunload', (e) => { if (S.edDirty) { e.preventDefau
    ========================================================= */
 (async function init() {
   applyTheme();
+  markVer();
   try { await loadRecipes(); } catch (e) { $('#app').innerHTML = `<div class="empty">Il browser non permette di salvare dati (modalità privata?). ${esc(e.message)}</div>`; }
   // link condiviso da altre app (Condividi → In Cucina)
   const qs = new URLSearchParams(location.search);
@@ -2470,6 +2546,7 @@ window.addEventListener('beforeunload', (e) => { if (S.edDirty) { e.preventDefau
     await router();
   } else await router();
   window.addEventListener('hashchange', router);
+  if (!link) setTimeout(showWhatsNew, 400);
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>
