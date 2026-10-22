@@ -1,7 +1,7 @@
 // In Cucina con Paolo — service worker
-// Rete prima per la pagina (così gli aggiornamenti arrivano subito),
+// Rete prima (sempre rivalidata col server, così gli aggiornamenti arrivano subito),
 // cache come riserva quando sei offline. Le chiamate esterne (AI, siti) non vengono toccate.
-const CACHE = 'incucina-v1.4.0';
+const CACHE = 'incucina-v1.5.0';
 const SHELL = [
   './',
   './index.html',
@@ -18,6 +18,8 @@ self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
+self.addEventListener('message', (e) => { if (e.data === 'skipWaiting') self.skipWaiting(); });
+
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
@@ -29,11 +31,11 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  if (url.pathname.endsWith('version.json')) return; // sempre dalla rete
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' })
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
         return res;
       })
       .catch(() => caches.match(e.request, { ignoreSearch: true }).then((r) => r || caches.match('./index.html')))

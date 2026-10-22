@@ -3,6 +3,11 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.5.0 — 22 ottobre 2026
+    - "Cerca aggiornamenti" in Impostazioni e Versioni (legge version.json),
+      installazione con un tocco, controllo automatico ogni 6 ore.
+    - Service worker: rivalida sempre la pagina col server.
+
   v1.4.0 — 22 ottobre 2026
     - Esigenze a tavola impostate per singola ricetta (ospiti diversi a
       ogni occasione), con avvisi e consigli "Per i tuoi ospiti".
@@ -125,6 +130,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .vscheme{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;font-size:.88rem;align-items:center;margin:4px 0 6px}
 .vnum{font-family:"Space Grotesk",system-ui,sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:.02em;text-align:center;margin:4px 0}
 .vnum span{padding:0 2px} .vnum .a{color:var(--bad)} .vnum .b{color:var(--accent)} .vnum .c{color:var(--ok)}
+.upd-new{border:1px solid var(--accent);border-radius:12px;padding:12px;background:color-mix(in srgb,var(--accent) 9%,var(--panel))}
+.upd-new ul{margin:6px 0 10px;padding-left:18px;font-size:.9rem}
 .homever{text-align:center;margin:26px 0 0;font-size:.82rem}
 .homever button{background:none;border:0;color:var(--dim);cursor:pointer;font:inherit;text-decoration:underline}
 .mast .iconbtn{color:#eaf3fb;border-color:rgba(234,243,251,.2)}
@@ -459,8 +466,13 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 const CHANGELOG = [
+  { v: '1.5.0', d: '22 ottobre 2026', items: [
+    'Pulsante "Cerca aggiornamenti" in Impostazioni e nella finestra Versioni: controlla se su GitHub c\'è una versione nuova, ne mostra le novità e la installa con un tocco.',
+    'Controllo automatico all\'apertura (al massimo ogni 6 ore): se c\'è un aggiornamento compare un avviso e la freccia ↑ accanto al numero di versione.',
+    'L\'app scarica sempre la versione più recente della pagina invece di usare copie vecchie in memoria.'
+  ]},
   { v: '1.4.0', d: '22 ottobre 2026', items: [
     'Esigenze a tavola per ogni ricetta: diabete, celiachia, lattosio, vegetariani/vegani, leggero e le 14 allergie, più una nota libera sugli ospiti (es. "Marco celiaco").',
     'Gli avvisi in cima alla ricetta e nella mise en place si basano sugli ospiti di quella ricetta; il nutrizionista aggiunge "Per i tuoi ospiti" con le modifiche da fare.',
@@ -1497,15 +1509,60 @@ function versionSchemeHtml() {
       <span class="vtag PATCH">PATCH</span><span>cambia per correzioni e piccoli ritocchi</span>
     </div>`;
 }
+/* ---------- Aggiornamenti: confronta con version.json pubblicato su GitHub ---------- */
+const Upd = { latest: null, checking: false };
+async function checkUpdate(silent) {
+  if (Upd.checking) return Upd.latest;
+  Upd.checking = true; drawUpdBoxes();
+  try {
+    const r = await fetchTimeout('version.json?t=' + Date.now(), 10000, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (!j || !/^\d+\.\d+\.\d+$/.test(j.version || '')) throw new Error('risposta non valida');
+    Upd.latest = j; Upd.error = '';
+    settings.set('upd_checked', Date.now());
+  } catch (e) { Upd.error = navigator.onLine === false ? 'Sei offline: riprova quando hai connessione.' : 'Controllo non riuscito (' + e.message + ').'; if (!silent) Upd.latest = null; }
+  finally { Upd.checking = false; drawUpdBoxes(); markVer(); }
+  return Upd.latest;
+}
+function updAvailable() { return Upd.latest && verCmp(Upd.latest.version, APP_VERSION) > 0; }
+function updBoxHtml() {
+  if (Upd.checking) return `<div class="row dim">${ic('refresh', 'spin').replace('<svg', '<svg style="width:18px;height:18px"')} Cerco aggiornamenti…</div>`;
+  if (updAvailable()) {
+    const L = Upd.latest;
+    return `<div class="upd-new"><div><b>Disponibile la v${esc(L.version)}</b>${L.date ? ` <span class="dim small">· ${esc(L.date)}</span>` : ''}</div>
+      ${Array.isArray(L.items) && L.items.length ? `<ul>${L.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+      <button class="btn primary block" data-act="upd-install">${ic('dl')} Installa aggiornamento</button>
+      <p class="small dim" style="margin:6px 0 0">Le tue ricette restano dove sono: si aggiorna solo l'app.</p></div>`;
+  }
+  return `<button class="btn block" data-act="upd-check">${ic('refresh')} Cerca aggiornamenti</button>
+    ${Upd.error ? `<p class="small" style="margin:6px 0 0;color:var(--bad)">${esc(Upd.error)}</p>` : Upd.latest ? `<p class="small" style="margin:6px 0 0;color:var(--ok)">✓ Hai l'ultima versione (v${esc(APP_VERSION)}).</p>` : ''}
+    ${settings.get('upd_checked', 0) ? `<p class="small dim" style="margin:4px 0 0">Ultimo controllo: ${new Date(settings.get('upd_checked', 0)).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}</p>` : ''}`;
+}
+function drawUpdBoxes() { $$('.updbox').forEach((b) => (b.innerHTML = updBoxHtml())); }
+async function installUpdate() {
+  if (S.edDirty && !(await confirmBox('Hai una ricetta in modifica non salvata: se aggiorni ora perdi le modifiche. Continuare?', 'Aggiorna comunque', true))) return;
+  $$('.updbox').forEach((b) => (b.innerHTML = `<div class="row dim">${ic('refresh', 'spin').replace('<svg', '<svg style="width:18px;height:18px"')} Installo la v${esc(Upd.latest.version)}…</div>`));
+  try {
+    if ('serviceWorker' in navigator) { const reg = await navigator.serviceWorker.getRegistration(); if (reg) { await reg.update().catch(() => {}); if (reg.waiting) reg.waiting.postMessage('skipWaiting'); } }
+    if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.filter((k) => k.startsWith('incucina-')).map((k) => caches.delete(k))); }
+    await fetch('index.html?t=' + Date.now(), { cache: 'reload' }).catch(() => {});
+  } catch {}
+  S.edDirty = false;
+  location.replace(location.pathname + '?v=' + encodeURIComponent(Upd.latest.version) + location.hash);
+}
 function openVersions() {
-  openModal('Versioni', versionSchemeHtml() + '<h3 style="margin:14px 0 0">Cronologia</h3>' + versionsHtml());
+  openModal('Versioni', versionSchemeHtml() + '<div class="updbox" style="margin:12px 0 4px"></div><h3 style="margin:14px 0 0">Cronologia</h3>' + versionsHtml());
+  drawUpdBoxes();
   settings.set('seen_version', APP_VERSION); markVer();
 }
 function markVer() {
   const b = $('#verBtn'); if (!b) return;
   b.textContent = 'v' + APP_VERSION;
   const seen = settings.get('seen_version', null);
-  b.classList.toggle('new', !!seen && verCmp(APP_VERSION, seen) > 0);
+  b.classList.toggle('new', (!!seen && verCmp(APP_VERSION, seen) > 0) || updAvailable());
+  b.textContent = 'v' + APP_VERSION + (updAvailable() ? ' ↑' : '');
+  b.title = updAvailable() ? 'Aggiornamento disponibile: v' + Upd.latest.version : 'Versioni e novità';
 }
 function showWhatsNew() {
   const seen = settings.get('seen_version', null);
@@ -1526,6 +1583,13 @@ function openModal(title, html, onMount) {
   document.body.appendChild(m);
   if (onMount) onMount(m);
   return m;
+}
+function toastAction(msg, label, fn) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.style.display = 'flex'; t.style.gap = '12px'; t.style.alignItems = 'center';
+  t.innerHTML = `<span>${esc(msg)}</span><button class="btn sm primary">${esc(label)}</button>`;
+  t.querySelector('button').onclick = () => { t.remove(); fn(); };
+  document.body.appendChild(t); setTimeout(() => t.remove(), 9000);
 }
 function closeModal() { const m = $('#modal'); if (m) m.remove(); }
 function confirmBox(msg, okLabel = 'Conferma', danger = false) {
@@ -2325,11 +2389,13 @@ function renderSettings(app) {
   <div class="card version-list" style="margin-top:16px">
     <h2>Versione</h2>
     ${versionSchemeHtml()}
+    <div class="updbox" style="margin-top:12px"></div>
     <h3 style="margin:14px 0 0">Cronologia</h3>
     ${versionsHtml()}
     <p class="small dim" style="margin-top:12px">In Cucina con Paolo · un progetto GPverse</p>
   </div>`;
   $('#bkIn').addEventListener('change', importBackup);
+  drawUpdBoxes();
   $('#kcalIn').addEventListener('change', (e) => { const v = Math.round(+e.target.value); if (v >= 1000 && v <= 5000) { settings.set('kcal_ref', v); toast('Fabbisogno: ' + v + ' kcal'); } else e.target.value = kcalRef(); });
   $('#autoNutri').addEventListener('change', (e) => settings.set('auto_nutri', e.target.checked));
   $('#defPpl').addEventListener('change', (e) => { settings.set('default_people', +e.target.value); S.view = {}; toast(+e.target.value ? 'Le ricette si apriranno per ' + e.target.value : 'Dosi come scritte nella ricetta'); });
@@ -2379,6 +2445,8 @@ const ACT = {
   'go-back': () => { if (history.length > 1) history.back(); else location.hash = '#/'; },
   'modal-close': () => closeModal(),
   'versions': () => openVersions(),
+  'upd-check': () => checkUpdate(false),
+  'upd-install': () => installUpdate(),
   'timer': (a) => Timers.add(a.dataset.label || 'Timer', +a.dataset.min),
   'timer-stop': (a) => Timers.remove(a.dataset.id),
   // home
@@ -2596,6 +2664,12 @@ window.addEventListener('beforeunload', (e) => { if (S.edDirty) { e.preventDefau
   } else await router();
   window.addEventListener('hashchange', router);
   if (!link) setTimeout(showWhatsNew, 400);
+  // controllo silenzioso all'avvio (al massimo ogni 6 ore): se c'è una versione nuova lo segnala
+  if (location.protocol.startsWith('http') && Date.now() - settings.get('upd_checked', 0) > 6 * 3600e3) {
+    setTimeout(async () => { await checkUpdate(true); if (updAvailable()) toastAction('È disponibile la v' + Upd.latest.version, 'Vedi', openVersions); }, 2500);
+  }
+  // pulisce il ?v= lasciato dall'installazione di un aggiornamento
+  if (/[?&]v=/.test(location.search)) history.replaceState(null, '', location.pathname + location.hash);
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>

@@ -1,0 +1,9 @@
+{
+  "version": "1.5.0",
+  "date": "22 ottobre 2026",
+  "items": [
+    "Pulsante \"Cerca aggiornamenti\" in Impostazioni e nella finestra Versioni: controlla se su GitHub c'è una versione nuova, ne mostra le novità e la installa con un tocco.",
+    "Controllo automatico all'apertura (al massimo ogni 6 ore): se c'è un aggiornamento compare un avviso e la freccia ↑ accanto al numero di versione.",
+    "L'app scarica sempre la versione più recente della pagina invece di usare copie vecchie in memoria."
+  ]
+}

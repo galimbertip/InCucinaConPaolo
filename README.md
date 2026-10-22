@@ -29,3 +29,4 @@ di ricette che pubblicano i dati in formato standard.
 Le ricette sono salvate nel browser del dispositivo. Usa Impostazioni → Esporta/Importa backup per spostarle.
 
 Versione corrente e cronologia: in cima a `index.html` e in Impostazioni.
+`version.json` contiene l'ultima versione pubblicata: l'app lo legge per "Cerca aggiornamenti" (va aggiornato a ogni rilascio insieme ad `APP_VERSION`).
