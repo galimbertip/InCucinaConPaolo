@@ -1,9 +1,9 @@
 {
-  "version": "1.6.1",
-  "date": "22 ottobre 2026",
+  "version": "1.7.0",
+  "date": "23 ottobre 2026",
   "items": [
-    "Corretto Svuota frigo e Cosa cucino? che rispondevano sempre \"Google sovraccarico\": se la ricerca web non è permessa dalla chiave gratuita l'app ora riprova senza, e se un modello AI è intasato passa da sola al successivo.",
-    "Le idee vengono lette anche quando l'AI le restituisce in un formato un po' diverso.",
-    "\"Salva e prova\" in Impostazioni ora fa una vera richiesta all'AI e dice quale modello risponde; c'è anche l'elenco delle ultime richieste con gli eventuali errori di Google."
+    "Nuova lista della spesa: scegli una o più ricette dal ricettario, indica per quante persone cucini ciascuna e l'app somma le quantità di tutti gli ingredienti (es. 200 g + 150 g di burro = 350 g).",
+    "Lista ordinata per reparto del supermercato (frutta e verdura, carne e pesce, latticini e uova…), con spunte per quello che hai già o che hai preso, voci aggiunte a mano e pulsante Condividi per mandarla su WhatsApp.",
+    "Carrello in testata con il numero di ricette in lista, carrello su ogni ricetta del ricettario e nella scheda ricetta per aggiungerla al volo."
   ]
 }

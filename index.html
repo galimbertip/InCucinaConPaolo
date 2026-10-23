@@ -3,6 +3,11 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.7.0 — 23 ottobre 2026
+    - Lista della spesa: ricette scelte + persone per ciascuna, quantità
+      sommate e convertite (g/kg, ml/l), raggruppate per reparto, spunte,
+      voci libere, condivisione. Carrello in testata, schede e ricetta.
+
   v1.6.1 — 22 ottobre 2026
     - Fix "Google sovraccarico" in Svuota frigo / Cosa cucino?: ripiego
       senza ricerca web, cambio automatico di modello, lettura idee più
@@ -124,7 +129,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .mast img{width:46px;height:36px;object-fit:cover;border-radius:8px}
 .brand{font-weight:700;font-size:1.08rem;line-height:1.1}
 .brand small{display:block;font-weight:500;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:#3fe0f0;opacity:.85}
-.mast .back{margin-left:auto}
+.mast-r{margin-left:auto;display:flex;gap:8px;align-items:center}
+.cartbtn{position:relative;color:#eaf3fb;border-color:rgba(234,243,251,.2)}
+.badge-n{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;border-radius:10px;padding:0 5px;background:#3fe0f0;color:#04121a;font:700 .7rem/19px "Space Grotesk",system-ui,sans-serif;text-align:center}
+.badge-n:empty{display:none}
 .verbtn{font:inherit;letter-spacing:.06em;color:#3fe0f0;background:rgba(63,224,240,.12);border:1px solid rgba(63,224,240,.35);border-radius:6px;padding:0 6px;margin-left:2px;cursor:pointer;text-transform:none}
 .verbtn.new{background:#3fe0f0;color:#04121a;font-weight:700}
 .ver{border-left:3px solid var(--line);padding:2px 0 2px 12px;margin-top:14px}
@@ -218,6 +226,11 @@ textarea{min-height:80px;resize:vertical;line-height:1.45}
 .rcard .cact button{width:34px;height:34px;border-radius:10px;border:0;display:grid;place-items:center;background:rgba(5,7,15,.62);color:#fff;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .rcard .cact button svg{width:16px;height:16px}
 .rcard .cact button.del{color:#ff9aa5}
+.rcard .cact button.cart.on{background:#3fe0f0;color:#04121a}
+.rcard.inlist{outline:2px solid var(--accent);outline-offset:-1px}
+.shopbar{position:sticky;bottom:calc(var(--nav-h) + var(--safe-b) + 8px);z-index:20;margin-top:16px;display:flex;gap:10px;align-items:center;padding:10px 10px 10px 14px;background:var(--mast-1);color:#eaf3fb;border:1px solid rgba(63,224,240,.35);border-radius:16px;box-shadow:var(--shadow)}
+.shopbar svg{width:22px;height:22px;color:#3fe0f0;flex:none}
+.shopbar span{flex:1;font-size:.92rem}
 .rcard .ph .noimg{position:absolute;inset:0;display:grid;place-items:center;color:#3fe0f0;opacity:.6}
 .rcard .ph .noimg svg{width:44px;height:44px}
 .rcard .bd{padding:10px 12px 12px}
@@ -239,7 +252,8 @@ textarea{min-height:80px;resize:vertical;line-height:1.45}
 .servings .serv-in{width:64px;min-height:36px;padding:4px 6px;text-align:center;font-family:"Space Grotesk",system-ui,sans-serif;font-weight:700;font-size:1.05rem;-moz-appearance:textfield}
 .servings .serv-in::-webkit-outer-spin-button,.servings .serv-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .servings .u{font-family:"Space Grotesk",system-ui,sans-serif;font-weight:600;margin-right:4px}
-.actions{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;margin:14px 0}
+.actions{display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;margin:14px 0}
+.iconbtn.incart{background:var(--accent);color:var(--on-accent);border-color:transparent}
 .checklist{list-style:none;margin:0;padding:0}
 .checklist li{display:flex;gap:12px;align-items:flex-start;padding:10px 2px;border-bottom:1px dashed var(--line);cursor:pointer}
 .checklist li:last-child{border-bottom:0}
@@ -362,6 +376,25 @@ table.nutri tr.sub td:first-child{padding-left:18px;color:var(--dim)}
 .idea .miss{font-size:.88rem;margin-top:6px}
 .idea .links{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .chipinput{display:flex;gap:8px}
+.shop-rec{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);flex-wrap:wrap}
+.shop-rec:last-child{border-bottom:0}
+.shop-rt{display:flex;align-items:center;gap:10px;flex:1 1 160px;min-width:0;color:var(--text);text-decoration:none}
+.shop-rt img,.shop-rt .ph0{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none;background:var(--panel-2);display:grid;place-items:center;color:var(--accent)}
+.shop-rt .ph0 svg{width:24px;height:24px}
+.shop-rt b{font-family:"Space Grotesk",system-ui,sans-serif;font-size:.95rem;line-height:1.2}
+.servings.sm{padding:3px 5px;gap:4px;border-radius:12px}
+.servings.sm .serv-in{width:46px;min-height:32px;font-size:.95rem}
+.servings.sm .u{font-size:.8rem}
+.servings.sm .v{min-width:28px;font-size:.95rem}
+.shop-from{display:block;font-size:.76rem;color:var(--dim);margin-top:1px}
+.pk-list{display:grid;gap:6px;max-height:52vh;overflow:auto}
+.pk{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:var(--bg)}
+.pk .box{width:24px;height:24px;border-radius:8px;border:2px solid var(--line);flex:none;display:grid;place-items:center}
+.pk .box svg{width:15px;height:15px;opacity:0;color:var(--on-accent)}
+.pk.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--panel))}
+.pk.on .box{background:var(--accent);border-color:var(--accent)}
+.pk.on .box svg{opacity:1}
+.pk-t{flex:1;min-width:0;font-weight:600;display:flex;flex-direction:column;line-height:1.25}
 .wz-dots{display:flex;gap:8px;margin:6px 0 14px}
 .wz-dots span{flex:1;height:30px;border-radius:9px;display:grid;place-items:center;font-family:"Space Grotesk",system-ui,sans-serif;font-weight:700;font-size:.85rem;background:var(--panel-2);border:1px solid var(--line);color:var(--dim);cursor:pointer}
 .wz-dots span.on{background:linear-gradient(135deg,var(--accent),var(--violet));color:var(--on-accent);border-color:transparent}
@@ -428,7 +461,7 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
   <div class="wrap">
     <a href="#/" aria-label="Home"><img src="icons/gpverse-logo.jpg" alt="GPverse"></a>
     <div class="brand">In Cucina con Paolo<small>GPverse · <button class="verbtn" data-act="versions" id="verBtn" aria-label="Versioni e novità">v—</button></small></div>
-    <div class="back" id="mastAction"></div>
+    <div class="mast-r"><div id="mastAction"></div><a class="iconbtn cartbtn" href="#/spesa" aria-label="Lista della spesa"><svg viewBox="0 0 24 24"><use href="#i-cart"/></svg><span class="badge-n" id="cartN"></span></a></div>
   </div>
 </header>
 <main id="app" class="wrap"></main>
@@ -484,6 +517,7 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
     <symbol id="i-dl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
     <symbol id="i-ul" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2.5 3.5h3l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.1L21 8H6.6"/></symbol>
     <symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10.5 13.9 12.4 12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/><path d="M19 3v4M17 5h4"/></symbol>
   </defs>
 </svg>
@@ -493,8 +527,13 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.6.1';
+const APP_VERSION = '1.7.0';
 const CHANGELOG = [
+  { v: '1.7.0', d: '23 ottobre 2026', items: [
+    'Nuova lista della spesa: scegli una o più ricette dal ricettario, indica per quante persone cucini ciascuna e l\'app somma le quantità di tutti gli ingredienti (es. 200 g + 150 g di burro = 350 g).',
+    'Lista ordinata per reparto del supermercato (frutta e verdura, carne e pesce, latticini e uova…), con spunte per quello che hai già o che hai preso, voci aggiunte a mano e pulsante Condividi per mandarla su WhatsApp.',
+    'Carrello in testata con il numero di ricette in lista, carrello su ogni ricetta del ricettario e nella scheda ricetta per aggiungerla al volo.'
+  ]},
   { v: '1.6.1', d: '22 ottobre 2026', items: [
     'Corretto Svuota frigo e Cosa cucino? che rispondevano sempre "Google sovraccarico": se la ricerca web non è permessa dalla chiave gratuita l\'app ora riprova senza, e se un modello AI è intasato passa da sola al successivo.',
     'Le idee vengono lette anche quando l\'AI le restituisce in un formato un po\' diverso.',
@@ -1694,7 +1733,7 @@ const S = {
   importTab: 'link', importUrl: '',
   cook: null
 };
-async function loadRecipes() { S.recipes = (await DB.all()).map(normalizeRecipe); }
+async function loadRecipes() { S.recipes = (await DB.all()).map(normalizeRecipe); updCartBadge(); }
 
 function setMastAction(html = '') { $('#mastAction').innerHTML = html; }
 function setNav(name) { $$('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.nav === name)); }
@@ -1716,6 +1755,7 @@ async function router() {
       case 'importa': setNav('importa'); return renderImport(app);
       case 'frigo': setNav('frigo'); return renderFrigo(app);
       case 'consigli': setNav('home'); return renderWizard(app);
+      case 'spesa': setNav(''); return renderShop(app);
       case 'impostazioni': setNav('impostazioni'); return renderSettings(app);
       default: location.hash = '#/';
     }
@@ -1748,6 +1788,7 @@ function renderHome(app) {
       </select>
     </div>
     <div class="grid" id="grid"></div>
+    <div id="shopbar"></div>
     <p class="homever"><button data-act="versions">In Cucina con Paolo v${APP_VERSION} · novità</button></p>` : `
     <div class="card empty" style="margin-top:6px">
       <div style="color:var(--accent);margin-bottom:8px">${ic('pot').replace('<svg', '<svg style="width:56px;height:56px;margin:auto"')}</div>
@@ -1778,12 +1819,13 @@ function drawGrid() {
   list.sort(by[S.filter.sort]);
   $('#count').textContent = list.length + (list.length === 1 ? ' ricetta' : ' ricette');
   $('#grid').innerHTML = list.length ? list.map(cardHtml).join('') : `<div class="empty" style="grid-column:1/-1">Nessuna ricetta trovata.</div>`;
+  drawShopbar();
 }
 function cardHtml(r) {
   const t = totalMin(r);
-  return `<a class="rcard" href="#/r/${encodeURIComponent(r.id)}">
+  return `<a class="rcard ${Shop.has(r.id) ? 'inlist' : ''}" href="#/r/${encodeURIComponent(r.id)}">
     <div class="ph">${r.photo ? `<img src="${esc(r.photo)}" alt="" loading="lazy">` : `<div class="noimg">${ic('pot')}</div>`}${r.favorite ? `<span class="fav">${ic('starf')}</span>` : ''}
-      <span class="cact"><button data-act="card-edit" data-id="${r.id}" aria-label="Modifica ${esc(r.title)}">${ic('edit')}</button><button class="del" data-act="card-del" data-id="${r.id}" aria-label="Elimina ${esc(r.title)}">${ic('trash')}</button></span></div>
+      <span class="cact"><button class="cart ${Shop.has(r.id) ? 'on' : ''}" data-act="card-cart" data-id="${r.id}" aria-label="${Shop.has(r.id) ? 'Togli dalla' : 'Aggiungi alla'} lista della spesa">${ic('cart')}</button><button data-act="card-edit" data-id="${r.id}" aria-label="Modifica ${esc(r.title)}">${ic('edit')}</button><button class="del" data-act="card-del" data-id="${r.id}" aria-label="Elimina ${esc(r.title)}">${ic('trash')}</button></span></div>
     <div class="bd"><h3>${esc(r.title || 'Senza titolo')}</h3>
     <div class="m">${t ? `<span>${fmtMin(t)}</span>` : ''}<span>${esc(r.difficulty)}</span>${r.log.length ? `<span>×${r.log.length}</span>` : ''}</div></div></a>`;
 }
@@ -1856,6 +1898,7 @@ function recipeHtml(r, v) {
     <a class="btn primary" href="#/cucina/${encodeURIComponent(r.id)}">${ic('chef')} Inizia a cucinare</a>
     <a class="iconbtn" href="#/modifica/${encodeURIComponent(r.id)}" aria-label="Modifica">${ic('edit')}</a>
     ${isDraft ? '' : `<button class="iconbtn ${r.favorite ? 'on' : ''}" data-act="fav" data-id="${r.id}" aria-label="Preferita">${ic(r.favorite ? 'starf' : 'star')}</button>`}
+    ${isDraft ? '' : `<button class="iconbtn ${Shop.has(r.id) ? 'incart' : ''}" data-act="r-cart" data-id="${r.id}" aria-label="Lista della spesa">${ic('cart')}</button>`}
     <button class="iconbtn" data-act="rmenu" data-id="${r.id}" aria-label="Altro">${ic('more')}</button>
   </div>
   ${r.warnings.length ? `<div class="notice"><b>Da verificare:</b> ${r.warnings.map(esc).join(' · ')}</div>` : ''}
@@ -2202,6 +2245,187 @@ async function runImport(kind) {
       ${e.code === 'multi' ? `<div class="stack" style="margin-top:10px">${e.titles.map((t) => `<button class="btn block" style="justify-content:flex-start;text-align:left" data-act="imp-pick" data-t="${esc(t)}">${ic('chef')} ${esc(t)}</button>`).join('')}</div>` : ''}
       ${e.code === 'social' ? `<div class="row" style="margin-top:8px"><button class="btn sm" data-act="imp-tab" data-t="testo">${ic('text')} Usa Testo</button><button class="btn sm" data-act="imp-tab" data-t="foto">${ic('image')} Usa Foto</button></div>` : ''}</div>`;
   } finally { if (btn) btn.disabled = false; }
+}
+
+/* =========================================================
+   LISTA DELLA SPESA
+   ========================================================= */
+const Shop = {
+  get() { const d = settings.get('shop', null) || {}; return { plan: Array.isArray(d.plan) ? d.plan : [], checked: d.checked || {}, extra: Array.isArray(d.extra) ? d.extra : [], hideDone: !!d.hideDone }; },
+  save(d) { settings.set('shop', d); updCartBadge(); },
+  has(id) { return this.get().plan.some((p) => p.id === id); },
+  add(id, servings) { const d = this.get(); const p = d.plan.find((x) => x.id === id); if (p) p.servings = servings; else d.plan.push({ id, servings }); this.save(d); },
+  remove(id) { const d = this.get(); d.plan = d.plan.filter((x) => x.id !== id); this.save(d); },
+  toggle(id) {
+    const r = S.recipes.find((x) => x.id === id); if (!r) return false;
+    if (this.has(id)) { this.remove(id); return false; }
+    const v = S.view[id]; this.add(id, (v && v.servings) || defaultServings(r)); return true;
+  }
+};
+function updCartBadge() {
+  const d = Shop.get(); const n = d.plan.filter((p) => S.recipes.some((r) => r.id === p.id)).length;
+  const b = $('#cartN'); if (b) b.textContent = n ? String(n) : '';
+}
+function drawShopbar() {
+  const el = $('#shopbar'); if (!el) return;
+  const n = Shop.get().plan.filter((p) => S.recipes.some((r) => r.id === p.id)).length;
+  el.innerHTML = n ? `<div class="shopbar">${ic('cart')}<span><b>${n}</b> ${n === 1 ? 'ricetta' : 'ricette'} nella lista della spesa</span><a class="btn sm primary" href="#/spesa">Vai alla spesa</a></div>` : '';
+}
+const SHOP_AISLES = [
+  ['Frutta e verdura', /\b(zucca|zucche\b|zucchin|melanzan|peperon|pomodor|patat|cipoll|aglio|scalogn|porr|carot|sedano|finocch|insalat|lattug|rucola|spinac|bietol|cavol|broccol|verz|carciof|asparag|fagiolin|pisell|funghi|champignon|porcin|zenzero|limon|aranc|mela|mele|pera|pere|banan|fragol|frutti di bosco|lampon|mirtill|uva|pesc[ah]|albicocc|ciliegi|kiwi|ananas|mango|avocado|cetriol|ravanell|radicchi|basilic|prezzemol|rosmarin|salvia|timo|menta|erba cipollina|aneto|coriandol|origano fresco|castagn|melograno|fichi|cachi|clementin|mandarin|lime|cocomer|melone)/],
+  ['Carne e pesce', /\b(pollo|tacchin|manzo|vitell|maial|agnell|coniglio|salsicc|carne|macinat|bistecc|fettin|arrost|guancial|pancett|prosciutt|speck|salame|mortadell|bresaol|wurstel|cotechin|zampone|lonza|filetto|petto d|cosce|ali di|pesce|salmon|tonno fresco|merluzz|orat|branzin|spigol|gamber|scamp|cozz|vongol|calamar|polpo|seppi|acciug|alici|baccal|trota|sgombr|sard[ei]|pesce spada|capesant)/],
+  ['Latticini e uova', /\b(latte\b|latte fresco|latte intero|panna|burro\b|yogurt|mascarpone|ricotta|mozzarell|burrata|stracciatell|parmigian|grana|pecorin|gorgonzol|fontin|scamorz|provol|stracchin|crescenz|taleggi|asiago|emmental|formagg|uov[oa]|tuorl|album|besciamell|philadelphia)/],
+  ['Pane, pasta e cereali', /\b(pasta\b|spaghett|penne|rigaton|fusill|tagliatell|lasagn|gnocch|ravioli|tortellin|riso|risotto|farro|orzo|couscous|cous cous|quinoa|pane|pangrattato|grissin|cracker|fette biscottate|piadin|tortill|pasta sfoglia|sfoglia|pasta frolla|pasta brisee|pasta brisée|pizza|savoiard|biscott|pan di spagna)/],
+  ['Dispensa', /\b(farin|zucchero|amido|fecola|lievito|cacao|cioccolat|miele|marmellat|confettur|passata|pelati|polpa di pomodoro|concentrato|tonno|legumi|fagiol|ceci|lenticch|olive|capperi|sottacet|aceto|olio|brodo|dado|vino|marsala|liquore|rum|caffe|tè|the\b|frutta secca|noci|mandorl|nocciol|pistacch|pinoli|uvett|cocco|maionese|senape|ketchup|salsa|latte condensato|panna da cucina|gelatina|colla di pesce|vanillin|zucchero a velo|biscotti)/],
+  ['Spezie e condimenti', /\b(sale|pepe|peperoncin|paprik|curry|curcum|cannell|noce moscata|chiodi di garofano|zafferan|cumino|origano|alloro|semi di|vaniglia|bacche|ginepro|spezie|erbe aromatiche)/],
+  ['Surgelati', /\b(surgelat|congelat|gelato)/],
+  ['Bevande', /\b(acqua|birra|succo|spumante|prosecco|bibita)/]
+];
+function shopAisle(name) { const t = ' ' + normTxt(name) + ' '; for (const [a, rx] of SHOP_AISLES) if (rx.test(t)) return a; return 'Altro'; }
+const SHOP_STOP = new Set(['di', 'del', 'della', 'delle', 'dei', 'degli', 'da', 'per', 'fresco', 'fresca', 'freschi', 'fresche', 'intero', 'intera', 'medio', 'media', 'medie', 'medi', 'grande', 'grandi', 'piccolo', 'piccola', 'piccole', 'piccoli', 'q', 'b']);
+function shopKey(name) {
+  return normTxt(name).split(' ').filter((w) => w && !SHOP_STOP.has(w)).map((w) => w.length > 4 ? w.replace(/(e|i|a|o)$/, '') : w).join(' ');
+}
+function unitClass(u) {
+  u = cleanUnit(u || '');
+  if (u === 'g' || u === 'kg' || u === 'mg') return ['g', u === 'kg' ? 1000 : u === 'mg' ? 0.001 : 1];
+  if (u === 'ml' || u === 'l' || u === 'cl' || u === 'dl') return ['ml', { l: 1000, cl: 10, dl: 100, ml: 1 }[u]];
+  if (!u || u === 'pz') return ['pz', 1];
+  if (u === 'q.b.' || u === 'pizzico') return ['qb', 1];
+  return [u, 1];
+}
+function fmtShopQty(q, cls) {
+  if (cls === 'g') return q >= 1000 ? fmtQty(Math.round(q / 50) / 20, 'kg') + ' kg' : fmtQty(q, 'g') + ' g';
+  if (cls === 'ml') return q >= 1000 ? fmtQty(Math.round(q / 50) / 20, 'l') + ' l' : fmtQty(q, 'ml') + ' ml';
+  if (cls === 'pz') return String(Math.ceil(q - 0.001));
+  return fmtQty(q, cls) + ' ' + unitLabel(cls, q);
+}
+function buildShopList() {
+  const d = Shop.get();
+  const plan = d.plan.map((p) => ({ p, r: S.recipes.find((x) => x.id === p.id) })).filter((x) => x.r);
+  const items = new Map();
+  plan.forEach(({ p, r }) => {
+    const k = (p.servings || r.servings.amount) / (r.servings.amount || 1);
+    allIngredients(r).forEach((i) => {
+      if (!i.name.trim()) return;
+      const [cls, mul] = unitClass(i.unit);
+      const key = shopKey(i.name) + '|' + (cls === 'qb' ? 'qb' : cls);
+      const it = items.get(key) || { key, name: i.name.trim(), cls, qty: 0, hasQty: false, from: [], optional: true, aisle: shopAisle(i.name) };
+      if (i.qty != null && cls !== 'qb') { it.qty += i.qty * mul * k; it.hasQty = true; }
+      if (!it.from.includes(r.title)) it.from.push(r.title);
+      if (!i.optional) it.optional = false;
+      items.set(key, it);
+    });
+  });
+  // un ingrediente "q.b." già presente con una quantità non va ripetuto
+  for (const it of [...items.values()]) {
+    if (it.cls !== 'qb') continue;
+    const base = it.key.split('|')[0];
+    const other = [...items.values()].find((x) => x !== it && x.key.split('|')[0] === base);
+    if (other) { it.from.forEach((f) => { if (!other.from.includes(f)) other.from.push(f); }); items.delete(it.key); }
+  }
+  const list = [...items.values()].sort((a, b) => a.name.localeCompare(b.name, 'it'));
+  list.forEach((it) => { it.label = it.cls === 'qb' || !it.hasQty ? 'q.b.' : fmtShopQty(it.qty, it.cls); });
+  return { plan, list, d };
+}
+function shopText() {
+  const { plan, list, d } = buildShopList();
+  const L = ['🛒 Lista della spesa'];
+  if (plan.length) L.push('Per: ' + plan.map(({ p, r }) => r.title + ' (' + p.servings + ' ' + r.servings.unit + ')').join(', '));
+  const aisles = [...SHOP_AISLES.map((a) => a[0]), 'Altro'];
+  aisles.forEach((a) => {
+    const its = list.filter((x) => x.aisle === a && !d.checked[x.key]);
+    if (!its.length) return;
+    L.push('', a.toUpperCase());
+    its.forEach((x) => L.push('☐ ' + (x.label === 'q.b.' ? x.name + ' (q.b.)' : x.label + ' ' + x.name) + (x.optional ? ' (facoltativo)' : '')));
+  });
+  const ex = d.extra.filter((x) => !x.done);
+  if (ex.length) { L.push('', 'ALTRO DA PRENDERE'); ex.forEach((x) => L.push('☐ ' + x.text)); }
+  L.push('', '— In Cucina con Paolo · GPverse');
+  return L.join('\n');
+}
+function renderShop(app) {
+  setMastAction(`<button class="iconbtn" data-act="go-back" aria-label="Indietro">${ic('left')}</button>`);
+  const { plan, list, d } = buildShopList();
+  const aisles = [...SHOP_AISLES.map((a) => a[0]), 'Altro'];
+  const done = list.filter((x) => d.checked[x.key]).length + d.extra.filter((x) => x.done).length;
+  const total = list.length + d.extra.length;
+  app.innerHTML = `
+  <h1 style="margin-top:16px">Lista della spesa</h1>
+  <div class="sectionhead" style="margin-top:12px"><span class="num">1</span><h2>Cosa cucini</h2><span class="aside"><button class="btn sm" data-act="shop-pick">${ic('plus')} Ricette</button></span></div>
+  <div class="card">
+    ${plan.length ? plan.map(({ p, r }) => `
+      <div class="shop-rec">
+        <a href="#/r/${encodeURIComponent(r.id)}" class="shop-rt">${r.photo ? `<img src="${esc(r.photo)}" alt="">` : `<span class="ph0">${ic('pot')}</span>`}<b>${esc(r.title)}</b></a>
+        <div class="row" style="gap:6px;flex-wrap:nowrap">
+          <div class="servings sm"><button class="iconbtn sm" data-act="shop-serv" data-id="${r.id}" data-d="-1" aria-label="Meno">−</button><input type="number" class="serv-in" data-shopserv="${r.id}" min="1" max="200" inputmode="numeric" value="${p.servings}" aria-label="Persone"><span class="u">pers.</span><button class="iconbtn sm" data-act="shop-serv" data-id="${r.id}" data-d="1" aria-label="Più">+</button></div>
+          <button class="iconbtn sm" data-act="shop-rm" data-id="${r.id}" aria-label="Togli">${ic('x')}</button>
+        </div>
+      </div>`).join('') : `<div class="empty" style="padding:14px 6px">Nessuna ricetta ancora. Tocca <b>+ Ricette</b> per sceglierle dal ricettario, oppure il carrello su una ricetta.</div>`}
+  </div>
+
+  <div class="sectionhead"><span class="num">2</span><h2>Da comprare</h2><span class="aside small dim">${total ? `presi ${done}/${total}` : ''}</span></div>
+  ${list.length || d.extra.length ? `
+  <div class="row" style="margin-bottom:10px">
+    <button class="btn sm primary" data-act="shop-share">${ic('share')} Condividi</button>
+    <button class="btn sm" data-act="shop-copy">${ic('copy')} Copia</button>
+    <button class="btn sm ghost" data-act="shop-hide">${d.hideDone ? 'Mostra presi' : 'Nascondi presi'}</button>
+  </div>` : ''}
+  <div class="card">
+    ${aisles.map((a) => {
+      const its = list.filter((x) => x.aisle === a && !(d.hideDone && d.checked[x.key]));
+      if (!its.length) return '';
+      return `<div class="group-name">${esc(a)}</div><ul class="checklist">${its.map((x) => `<li class="${d.checked[x.key] ? 'done' : ''}" data-act="shop-chk" data-k="${esc(x.key)}"><span class="box">${ic('check')}</span><span class="t"><span class="qty">${esc(x.label)}</span> ${esc(x.name)}${x.optional ? '<span class="opt">facoltativo</span>' : ''}${plan.length > 1 ? `<span class="shop-from">${esc(x.from.join(' · '))}</span>` : ''}</span></li>`).join('')}</ul>`;
+    }).join('')}
+    ${d.extra.filter((x) => !(d.hideDone && x.done)).length ? `<div class="group-name">Aggiunti da te</div><ul class="checklist">${d.extra.map((x, i) => d.hideDone && x.done ? '' : `<li class="${x.done ? 'done' : ''}" data-act="shop-xchk" data-i="${i}"><span class="box">${ic('check')}</span><span class="t">${esc(x.text)}</span><button class="iconbtn sm" data-act="shop-xdel" data-i="${i}" aria-label="Elimina" style="margin-left:auto">${ic('trash')}</button></li>`).join('')}</ul>` : ''}
+    ${!list.length && !d.extra.length ? '<div class="dim">La lista è vuota.</div>' : ''}
+    <div class="chipinput" style="margin-top:12px"><input type="text" id="shopIn" placeholder="Aggiungi altro (es. carta forno, detersivo)"><button class="btn sm" data-act="shop-xadd">${ic('plus')}</button></div>
+  </div>
+  ${list.length ? `<p class="small dim" style="margin:8px 2px 0">Le quantità sono già sommate tra le ricette e calcolate per le persone indicate. Spunta quello che hai già in casa o che hai preso.</p>` : ''}
+  ${plan.length || d.extra.length ? `<button class="btn ghost danger block" style="margin-top:16px" data-act="shop-clear">${ic('trash')} Svuota la lista</button>` : ''}`;
+  const inp = $('#shopIn'); if (inp) inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ACT['shop-xadd'](); } });
+  $$('[data-shopserv]').forEach((el) => el.addEventListener('change', () => {
+    const n = Math.round(num(el.value)); if (!n || n < 1 || n > 200) { renderShop(app); return; }
+    Shop.add(el.dataset.shopserv, n); shopRedraw();
+  }));
+}
+function shopRedraw() { const y = window.scrollY; renderShop($('#app')); window.scrollTo(0, y); }
+function openShopPicker() {
+  if (!S.recipes.length) { toast('Il ricettario è vuoto'); return; }
+  const d = Shop.get();
+  const sel = new Map(d.plan.map((p) => [p.id, p.servings]));
+  const m = openModal('Scegli le ricette', `
+    <div class="search" style="margin-bottom:10px">${ic('search')}<input type="search" id="pkQ" placeholder="Cerca"></div>
+    <div id="pkList" class="pk-list"></div>
+    <div class="row" style="margin-top:14px"><span class="grow small dim" id="pkN"></span><button class="btn primary" id="pkGo">${ic('cart')} Metti in lista</button></div>`, (m) => {
+    const draw = () => {
+      const q = normTxt($('#pkQ', m).value);
+      const list = S.recipes.filter((r) => !q || normTxt(r.title + ' ' + r.tags.join(' ')).includes(q)).sort((a, b) => a.title.localeCompare(b.title, 'it'));
+      $('#pkList', m).innerHTML = list.map((r) => { const on = sel.has(r.id); return `
+        <div class="pk ${on ? 'on' : ''}" data-id="${r.id}">
+          <span class="box">${ic('check')}</span>
+          <span class="pk-t">${esc(r.title)}<span class="small dim">${esc(r.category)}${totalMin(r) ? ' · ' + fmtMin(totalMin(r)) : ''}</span></span>
+          ${on ? `<span class="servings sm"><button class="iconbtn sm" data-d="-1">−</button><span class="v">${sel.get(r.id)}</span><button class="iconbtn sm" data-d="1">+</button></span>` : ''}
+        </div>`; }).join('') || '<div class="empty">Nessuna ricetta.</div>';
+      $('#pkN', m).textContent = sel.size ? sel.size + (sel.size === 1 ? ' ricetta scelta' : ' ricette scelte') : 'Tocca le ricette da cucinare';
+    };
+    $('#pkList', m).addEventListener('click', (e) => {
+      const row = e.target.closest('.pk'); if (!row) return;
+      const id = row.dataset.id; const btn = e.target.closest('button[data-d]');
+      if (btn) { sel.set(id, Math.max(1, Math.min(200, sel.get(id) + +btn.dataset.d))); }
+      else if (sel.has(id)) sel.delete(id);
+      else { const r = S.recipes.find((x) => x.id === id); sel.set(id, (S.view[id] && S.view[id].servings) || defaultServings(r)); }
+      draw();
+    });
+    $('#pkQ', m).addEventListener('input', draw);
+    $('#pkGo', m).onclick = () => {
+      const nd = Shop.get();
+      nd.plan = [...sel.entries()].map(([id, servings]) => ({ id, servings }));
+      Shop.save(nd); closeModal();
+      if (location.hash === '#/spesa') shopRedraw(); else location.hash = '#/spesa';
+    };
+    draw();
+  });
 }
 
 /* =========================================================
@@ -2663,8 +2887,27 @@ const ACT = {
   'go-back': () => { if (history.length > 1) history.back(); else location.hash = '#/'; },
   'modal-close': () => closeModal(),
   'versions': () => openVersions(),
+  'card-cart': (a) => { const on = Shop.toggle(a.dataset.id); toast(on ? 'Aggiunta alla lista della spesa' : 'Tolta dalla lista della spesa'); drawGrid(); },
+  'r-cart': (a) => {
+    const r = S.recipes.find((x) => x.id === a.dataset.id); if (!r) return;
+    const v = S.view[r.id];
+    if (Shop.has(r.id)) { Shop.remove(r.id); toast('Tolta dalla lista della spesa'); }
+    else { Shop.add(r.id, (v && v.servings) || defaultServings(r)); toastAction('In lista della spesa per ' + ((v && v.servings) || defaultServings(r)) + ' ' + r.servings.unit, 'Vai', () => { location.hash = '#/spesa'; }); }
+    rerenderRecipe(r.id);
+  },
+  'shop-pick': () => openShopPicker(),
+  'shop-serv': (a) => { const d = Shop.get(); const p = d.plan.find((x) => x.id === a.dataset.id); if (!p) return; p.servings = Math.max(1, Math.min(200, p.servings + +a.dataset.d)); Shop.save(d); shopRedraw(); },
+  'shop-rm': (a) => { Shop.remove(a.dataset.id); shopRedraw(); },
+  'shop-chk': (a) => { const d = Shop.get(); const k = a.dataset.k; if (d.checked[k]) delete d.checked[k]; else d.checked[k] = true; Shop.save(d); shopRedraw(); },
+  'shop-xchk': (a, e) => { if (e.target.closest('[data-act="shop-xdel"]')) return; const d = Shop.get(); const x = d.extra[+a.dataset.i]; if (x) x.done = !x.done; Shop.save(d); shopRedraw(); },
+  'shop-xdel': (a, e) => { e.stopPropagation(); const d = Shop.get(); d.extra.splice(+a.dataset.i, 1); Shop.save(d); shopRedraw(); },
+  'shop-xadd': () => { const el = $('#shopIn'); const v = el && el.value.trim(); if (!v) return; const d = Shop.get(); v.split(',').map((x) => x.trim()).filter(Boolean).forEach((t) => d.extra.push({ text: t, done: false })); Shop.save(d); shopRedraw(); setTimeout(() => { const i = $('#shopIn'); if (i) i.focus(); }, 0); },
+  'shop-hide': () => { const d = Shop.get(); d.hideDone = !d.hideDone; Shop.save(d); shopRedraw(); },
+  'shop-share': async () => { const t = shopText(); if (navigator.share) { try { await navigator.share({ title: 'Lista della spesa', text: t }); } catch {} } else { try { await navigator.clipboard.writeText(t); toast('Lista copiata'); } catch { toast('Copia non riuscita'); } } },
+  'shop-copy': async () => { try { await navigator.clipboard.writeText(shopText()); toast('Lista copiata ✓'); } catch { toast('Copia non riuscita'); } },
+  'shop-clear': async () => { if (!(await confirmBox('Svuotare la lista della spesa (ricette, spunte e voci aggiunte)?', 'Svuota', true))) return; Shop.save({ plan: [], checked: {}, extra: [], hideDone: false }); shopRedraw(); },
   'card-edit': (a) => { location.hash = '#/modifica/' + encodeURIComponent(a.dataset.id); },
-  'card-del': async (a) => { const r = S.recipes.find((x) => x.id === a.dataset.id); if (!r || !(await confirmBox('Eliminare "' + r.title + '"? Non si può annullare.', 'Elimina', true))) return; await DB.del(r.id); await loadRecipes(); toast('Ricetta eliminata'); renderHome($('#app')); },
+  'card-del': async (a) => { const r = S.recipes.find((x) => x.id === a.dataset.id); if (!r || !(await confirmBox('Eliminare "' + r.title + '"? Non si può annullare.', 'Elimina', true))) return; await DB.del(r.id); Shop.remove(r.id); await loadRecipes(); toast('Ricetta eliminata'); renderHome($('#app')); },
   'wz-tog': (a) => { const w = wzState(); const k = a.dataset.k, v = a.dataset.v; w[k] = w[k].includes(v) ? w[k].filter((x) => x !== v) : w[k].concat(v); a.classList.toggle('on'); },
   'wz-one': (a) => { const w = wzState(); w[a.dataset.k] = w[a.dataset.k] === a.dataset.v ? '' : a.dataset.v; $$(`[data-act="wz-one"][data-k="${a.dataset.k}"]`).forEach((b) => b.classList.toggle('on', b === a && w[a.dataset.k] === a.dataset.v)); },
   'wz-set': (a) => { const w = wzState(); w[a.dataset.k] = isNaN(+a.dataset.v) ? a.dataset.v : +a.dataset.v; $$(`[data-act="wz-set"][data-k="${a.dataset.k}"]`).forEach((b) => b.classList.toggle('on', b === a)); },
@@ -2716,7 +2959,7 @@ const ACT = {
   'r-copy': async (a) => { const r = S.recipes.find((x) => x.id === a.dataset.id) || S.draft; try { await navigator.clipboard.writeText(recipeToText(r, scaleOf(r, S.view[r.id] || {}))); toast('Testo copiato ✓'); } catch { toast('Copia non riuscita'); } closeModal(); },
   'r-json': (a) => { const r = S.recipes.find((x) => x.id === a.dataset.id) || S.draft; downloadFile(slug(r.title) + '.ricetta.json', JSON.stringify(r)); closeModal(); },
   'r-dup': async (a) => { const r = clone(S.recipes.find((x) => x.id === a.dataset.id)); r.id = uid(); r.title += ' (copia)'; r.createdAt = r.updatedAt = Date.now(); r.log = []; await DB.put(r); await loadRecipes(); closeModal(); location.hash = '#/modifica/' + r.id; },
-  'r-del': async (a) => { closeModal(); if (!(await confirmBox('Eliminare questa ricetta? Non si può annullare.', 'Elimina', true))) return; await DB.del(a.dataset.id); await loadRecipes(); toast('Ricetta eliminata'); location.hash = '#/'; },
+  'r-del': async (a) => { closeModal(); if (!(await confirmBox('Eliminare questa ricetta? Non si può annullare.', 'Elimina', true))) return; await DB.del(a.dataset.id); Shop.remove(a.dataset.id); await loadRecipes(); toast('Ricetta eliminata'); location.hash = '#/'; },
   // editor
   'ed-cancel': async () => {
     if (S.edDirty && !(await confirmBox('Uscire senza salvare le modifiche?', 'Esci senza salvare', true))) return;
