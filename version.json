@@ -1,9 +1,11 @@
 {
-  "version": "1.7.0",
-  "date": "23 ottobre 2026",
+  "version": "1.8.0",
+  "date": "28 ottobre 2026",
   "items": [
-    "Nuova lista della spesa: scegli una o più ricette dal ricettario, indica per quante persone cucini ciascuna e l'app somma le quantità di tutti gli ingredienti (es. 200 g + 150 g di burro = 350 g).",
-    "Lista ordinata per reparto del supermercato (frutta e verdura, carne e pesce, latticini e uova…), con spunte per quello che hai già o che hai preso, voci aggiunte a mano e pulsante Condividi per mandarla su WhatsApp.",
-    "Carrello in testata con il numero di ricette in lista, carrello su ogni ricetta del ricettario e nella scheda ricetta per aggiungerla al volo."
+    "YouTube: oltre a guardare il video l'AI legge titolo e descrizione, usando le dosi scritte lì; se il video non si può analizzare la ricetta viene ricavata dalla descrizione. Video lunghi analizzati più in fretta e senza interruzioni a metà.",
+    "Instagram: la didascalia completa ora si legge anche senza accesso (dalla versione pubblica del post).",
+    "TikTok: funzionano anche i link brevi condivisi dall'app (vm.tiktok.com) e la descrizione viene letta anche dai dati della pagina.",
+    "Nuova scheda \"Video\" in Importa: carichi un reel o un TikTok salvato sul telefono, l'AI lo guarda, scrive la ricetta e prende le foto dei passaggi dai fotogrammi.",
+    "Se un post non contiene la ricetta scritta, l'app non la inventa più e ti propone subito \"Video\", \"Foto\" o \"Testo\". Anche il testo condiviso insieme al link viene usato."
   ]
 }

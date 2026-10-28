@@ -3,6 +3,12 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.8.0 — 28 ottobre 2026
+    - Import social/video rivisto: descrizione YouTube + video, timeout
+      lungo senza ripetizioni, Instagram via embed/captioned, TikTok con
+      link brevi e dati pagina, nuova scheda Video (Files API + foto dei
+      passaggi dai fotogrammi), niente ricette inventate.
+
   v1.7.0 — 23 ottobre 2026
     - Lista della spesa: ricette scelte + persone per ciascuna, quantità
       sommate e convertite (g/kg, ml/l), raggruppate per reparto, spunte,
@@ -527,8 +533,15 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 const CHANGELOG = [
+  { v: '1.8.0', d: '28 ottobre 2026', items: [
+    'YouTube: oltre a guardare il video l\'AI legge titolo e descrizione, usando le dosi scritte lì; se il video non si può analizzare la ricetta viene ricavata dalla descrizione. Video lunghi analizzati più in fretta e senza interruzioni a metà.',
+    'Instagram: la didascalia completa ora si legge anche senza accesso (dalla versione pubblica del post).',
+    'TikTok: funzionano anche i link brevi condivisi dall\'app (vm.tiktok.com) e la descrizione viene letta anche dai dati della pagina.',
+    'Nuova scheda "Video" in Importa: carichi un reel o un TikTok salvato sul telefono, l\'AI lo guarda, scrive la ricetta e prende le foto dei passaggi dai fotogrammi.',
+    'Se un post non contiene la ricetta scritta, l\'app non la inventa più e ti propone subito "Video", "Foto" o "Testo". Anche il testo condiviso insieme al link viene usato.'
+  ]},
   { v: '1.7.0', d: '23 ottobre 2026', items: [
     'Nuova lista della spesa: scegli una o più ricette dal ricettario, indica per quante persone cucini ciascuna e l\'app somma le quantità di tutti gli ingredienti (es. 200 g + 150 g di burro = 350 g).',
     'Lista ordinata per reparto del supermercato (frutta e verdura, carne e pesce, latticini e uova…), con spunte per quello che hai già o che hai preso, voci aggiunte a mano e pulsante Condividi per mandarla su WhatsApp.',
@@ -926,8 +939,8 @@ const AI = {
     return 'Errore AI (' + status + '): ' + (m || 'risposta non valida');
   },
   log(entry) { const l = settings.get('ai_log', []); l.unshift(Object.assign({ t: Date.now() }, entry)); settings.set('ai_log', l.slice(0, 12)); },
-  async call(model, body) {
-    const r = await fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(this.key()), 150000, {
+  async call(model, body, timeoutMs = 150000) {
+    const r = await fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(this.key()), timeoutMs, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     }).catch((e) => ({ ok: false, status: 0, json: async () => ({ error: { message: e.name === 'AbortError' ? 'tempo scaduto' : 'rete non raggiungibile' } }) }));
     const j = await r.json().catch(() => ({}));
@@ -935,9 +948,9 @@ const AI = {
   },
   /* parts: [{text}|{inlineData}|{fileData}] — tools: ['google_search'|'url_context']
      Se un modello è sovraccarico o non disponibile prova il successivo; se gli strumenti web non sono permessi riprova senza. */
-  async generate({ parts, system, tools = [], json = true, temperature = 0.4 }) {
+  async generate({ parts, system, tools = [], json = true, temperature = 0.4, timeoutMs = 150000, maxModels = 6 }) {
     if (!this.has()) throw Object.assign(new Error('Serve la chiave AI gratuita: inseriscila in Impostazioni.'), { code: 'nokey' });
-    const models = await this.candidates();
+    const models = (await this.candidates()).slice(0, maxModels);
     let useTools = tools.slice(); let last = null; const tried = [];
     for (const model of models) {
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -945,7 +958,7 @@ const AI = {
         if (system) body.systemInstruction = { parts: [{ text: system }] };
         if (useTools.length) body.tools = useTools.map((t) => ({ [t]: {} }));
         else if (json) body.generationConfig.responseMimeType = 'application/json';
-        const res = await this.call(model, body);
+        const res = await this.call(model, body, timeoutMs);
         if (res.ok) {
           const cand = (res.j.candidates || [])[0] || {};
           const text = ((cand.content && cand.content.parts) || []).filter((p) => !p.thought).map((p) => p.text || '').join('');
@@ -968,12 +981,36 @@ const AI = {
         if (res.status === 403) throw last;
         // strumenti web non permessi (succede col piano gratuito): riprova subito senza
         if (useTools.length && res.status !== 0 && !(res.status === 429 && !/search|ground|tool|url/i.test(res.msg) && !/limit:\s*0\b/.test(res.msg))) { useTools = []; attempt--; continue; }
+        if (res.status === 0 && /tempo scaduto/.test(res.msg)) { last.message = 'L\'AI ci sta mettendo troppo (' + Math.round(timeoutMs / 1000) + ' s).'; break; }
         if ((res.status === 503 || res.status === 500 || res.status === 0) && attempt < 1) { await sleep(1500 * (attempt + 1)); continue; }
         break; // 404, 429, 5xx ripetuti → modello successivo
       }
     }
     if (last && tried.length) last.message += ' Ho provato: ' + [...new Set(tried)].slice(0, 4).join(', ') + '.';
     throw last || new Error('L\'AI non ha risposto, riprova.');
+  },
+  /* Carica un file (video) sui server di Google per farlo analizzare: Files API, gratuita */
+  async upload(file, onState) {
+    const base = 'https://generativelanguage.googleapis.com';
+    const start = await fetchTimeout(base + '/upload/v1beta/files?key=' + encodeURIComponent(this.key()), 30000, {
+      method: 'POST',
+      headers: { 'X-Goog-Upload-Protocol': 'resumable', 'X-Goog-Upload-Command': 'start', 'X-Goog-Upload-Header-Content-Length': String(file.size), 'X-Goog-Upload-Header-Content-Type': file.type || 'video/mp4', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: { display_name: (file.name || 'video').slice(0, 60) } })
+    });
+    const upUrl = start.headers.get('x-goog-upload-url');
+    if (!start.ok || !upUrl) throw new Error('caricamento non avviato (' + start.status + ')');
+    const up = await fetchTimeout(upUrl, 600000, { method: 'POST', headers: { 'X-Goog-Upload-Offset': '0', 'X-Goog-Upload-Command': 'upload, finalize' }, body: file });
+    const j = await up.json().catch(() => ({}));
+    if (!up.ok || !j.file) throw new Error('caricamento non riuscito (' + up.status + ')');
+    let f = j.file;
+    for (let i = 0; i < 90 && f.state === 'PROCESSING'; i++) {
+      if (onState) onState(i);
+      await sleep(2000);
+      const g = await fetchTimeout(base + '/v1beta/' + f.name + '?key=' + encodeURIComponent(this.key()), 15000).then((r) => r.json()).catch(() => null);
+      if (g && g.state) f = g;
+    }
+    if (f.state && f.state !== 'ACTIVE') throw new Error('Google non è riuscito a elaborare il video (' + f.state + ')');
+    return { fileUri: f.uri, mimeType: f.mimeType || file.type || 'video/mp4' };
   },
   /* compatibilità: gli strumenti web vengono già tolti da generate() se non disponibili */
   async generateWithFallback(opts) { return this.generate(opts); }
@@ -1047,11 +1084,11 @@ function detectPlatform(url) {
     return { type: 'youtube', id, url: id ? 'https://www.youtube.com/watch?v=' + id : url };
   }
   if (/tiktok\.com$/.test(h)) return { type: 'tiktok', url };
-  if (/instagram\.com$/.test(h)) return { type: 'instagram', url };
+  if (/(instagram\.com|instagr\.am)$/.test(h)) return { type: 'instagram', url };
   if (/(facebook\.com|fb\.watch|fb\.com)$/.test(h)) return { type: 'facebook', url };
   return { type: 'web', url };
 }
-const PLATFORM_NAME = { web: 'Sito web', youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', photo: 'Foto', text: 'Testo', ai: 'Svuota frigo', consiglio: 'Cosa cucino?', manual: 'Ricetta mia' };
+const PLATFORM_NAME = { web: 'Sito web', youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', photo: 'Foto', text: 'Testo', ai: 'Svuota frigo', consiglio: 'Cosa cucino?', video: 'Video', manual: 'Ricetta mia' };
 
 function isoDur(s) {
   if (!s || typeof s !== 'string') return 0;
@@ -1123,12 +1160,23 @@ function fromJsonLd(ld, url) {
   return normalizeRecipe(r);
 }
 
-async function importFromUrl(url, log) {
+async function importFromUrl(url, log, hint) {
   const pf = detectPlatform(url);
   if (!pf) throw new Error('Il link non sembra valido.');
-  if (pf.type === 'youtube') return importYouTube(pf, log);
+  if (pf.type === 'youtube') return importYouTube(pf, log, hint);
   if (pf.type === 'web') return importWeb(pf.url, log);
-  return importSocial(pf, log);
+  return importSocial(pf, log, hint);
+}
+/* testo "sembra una ricetta"? (dosi, ingredienti, procedimento) */
+function looksLikeRecipe(t) {
+  t = String(t || ''); if (t.length < 80) return false;
+  const doses = (t.match(/\d+\s*(g|gr|kg|ml|l|cl|cucchiai\w*|cucchiaio|cucchiaino|tazz\w*|uova|uovo)\b/gi) || []).length;
+  return doses >= 2 || /ingredient|procedimento|preparazione|ricetta/i.test(t) && doses >= 1;
+}
+function jsonUnescape(s) { try { return JSON.parse('"' + s + '"'); } catch { return s.replace(/\\n/g, '\n').replace(/\\"/g, '"'); } }
+async function imageToPart(url) {
+  if (!url) return null;
+  try { const blob = await proxyFetch(url, 'blob'); const data = await compressImage(await fileToDataURL(blob), 1024); return data; } catch { return null; }
 }
 
 /* Controllo automatico delle dosi: confronta quelle scritte dall'AI con quelle del testo originale
@@ -1225,80 +1273,198 @@ async function importWeb(url, log, pick) {
   return r;
 }
 
-async function importYouTube(pf, log) {
+async function youtubeInfo(id) {
+  const out = { title: '', author: '', description: '', seconds: 0 };
+  try { const r = await fetchTimeout('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + id), 10000); if (r.ok) { const j = await r.json(); out.title = j.title || ''; out.author = j.author_name || ''; } } catch {}
+  try {
+    const html = await proxyFetch('https://www.youtube.com/watch?v=' + id + '&hl=it');
+    const d = html.match(/"shortDescription":"((?:[^"\\]|\\.)*)"/); if (d) out.description = jsonUnescape(d[1]);
+    const l = html.match(/"lengthSeconds":"(\d+)"/); if (l) out.seconds = +l[1];
+    if (!out.title) { const t = html.match(/<meta name="title" content="([^"]*)"/); if (t) out.title = ldText(t[1]); }
+  } catch {}
+  return out;
+}
+async function importYouTube(pf, log, hint) {
   if (!pf.id) throw new Error('Non riconosco il video YouTube in questo link.');
   const thumb = 'https://i.ytimg.com/vi/' + pf.id + '/hqdefault.jpg';
   if (!AI.has()) throw Object.assign(new Error('Per trasformare un video in ricetta serve la chiave AI (gratuita): inseriscila in Impostazioni.'), { code: 'nokey' });
-  const s1 = log('L\'AI guarda il video (può volerci un minuto)');
-  let res;
+  const s0 = log('Leggo titolo e descrizione del video');
+  const info = await youtubeInfo(pf.id);
+  let desc = [info.description, hint].filter(Boolean).join('\n\n');
+  const descHasRecipe = looksLikeRecipe(desc);
+  if (info.title || desc) s0.ok((info.title ? '"' + info.title.slice(0, 50) + '"' : '') + (descHasRecipe ? ' · ricetta trovata nella descrizione' : desc ? ' · descrizione senza dosi' : ''));
+  else s0.ko('Non disponibile, guardo solo il video');
+  const mins = info.seconds ? Math.round(info.seconds / 60) : 0;
+  const s1 = log('L\'AI guarda il video' + (mins ? ' (' + mins + ' min)' : '') + ': può volerci un minuto o due');
+  const sys = RECIPE_RULES + '\nPer ogni passaggio indica in "videoAt" il secondo del video in cui viene mostrato (numero intero). Usa quello che si vede e si sente. Se nella descrizione del video ci sono le dosi, usa ESATTAMENTE quelle.';
+  const text = 'Trasforma questa video ricetta nel formato richiesto.' + (info.title ? '\nTitolo: ' + info.title : '') + (info.author ? '\nCanale: ' + info.author : '') + (desc ? '\nDescrizione del video:\n' + desc.slice(0, 8000) : '');
+  const videoPart = { fileData: { fileUri: pf.url } };
+  if (info.seconds > 900) videoPart.videoMetadata = { fps: 0.5 }; // video lunghi: meno fotogrammi, meno attesa
+  let res = null, videoErr = null;
   try {
-    res = await AI.generate({
-      system: RECIPE_RULES + '\nPer ogni passaggio indica in "videoAt" il secondo del video in cui viene mostrato (numero intero). Usa anche quello che si vede, non solo il parlato.',
-      parts: [{ fileData: { fileUri: pf.url } }, { text: 'Trasforma questa video ricetta nel formato richiesto.' }],
-      temperature: 0.3
-    });
-  } catch (e) {
-    s1.ko(e.message);
-    // ripiego: titolo del video, la descrizione la incolla l'utente
-    throw new Error(e.status === 429 ? e.message : 'Non riesco ad analizzare questo video (deve essere pubblico). Puoi copiare la descrizione del video e usare "Testo".');
-  }
-  if (!res.data || res.data.notARecipe) { s1.ko(); throw new Error('Nel video non ho trovato una ricetta.'); }
-  s1.ok();
-  const r = fromAiRecipe(res.data, { source: { type: 'youtube', url: pf.url, videoId: pf.id } });
-  const s2 = log('Scarico la copertina e le foto dei passaggi');
+    try { res = await AI.generate({ system: sys, parts: [videoPart, { text }], temperature: 0.3, timeoutMs: 300000, maxModels: 3 }); }
+    catch (e) { if (videoPart.videoMetadata && e.status === 400) { delete videoPart.videoMetadata; res = await AI.generate({ system: sys, parts: [videoPart, { text }], temperature: 0.3, timeoutMs: 300000, maxModels: 3 }); } else throw e; }
+    if (!res.data || res.data.notARecipe) { videoErr = new Error('Nel video non ho trovato una ricetta.'); res = null; }
+  } catch (e) { videoErr = e; }
+  let fromDesc = false;
+  if (!res) {
+    s1.ko(videoErr.message);
+    if (desc && desc.length > 80) {
+      const s2 = log('Ricavo la ricetta dalla descrizione del video');
+      try { res = await AI.generate({ system: RECIPE_RULES, parts: [{ text: 'Video YouTube "' + (info.title || '') + '" di ' + (info.author || '') + '.\nDescrizione:\n' + desc.slice(0, 12000) }] }); } catch (e) { s2.ko(e.message); }
+      if (res && res.data && !res.data.notARecipe) { s2.ok(); fromDesc = true; } else { if (res) s2.ko('nella descrizione non c\'è la ricetta'); res = null; }
+    }
+    if (!res) throw Object.assign(new Error(videoErr.status === 429 ? videoErr.message : 'Non riesco ad analizzare questo video' + (videoErr.status ? '' : ' (' + videoErr.message + ')') + '. Deve essere pubblico. In alternativa salvalo sul telefono e usa "Video", oppure copia la descrizione e usa "Testo".'), { code: 'social' });
+  } else s1.ok();
+  const r = fromAiRecipe(res.data, { source: { type: 'youtube', url: pf.url, videoId: pf.id, author: info.author } });
+  if (fromDesc) { r.phases.forEach((p) => p.steps.forEach((st) => (st.videoAt = null))); r.warnings.push('Ricavata dalla descrizione del video, senza guardarlo: controlla i passaggi.'); }
+  if (desc) reconcileDoses(r, desc);
+  const s3 = log('Scarico la copertina');
   let cover = await remoteToPhoto('https://i.ytimg.com/vi/' + pf.id + '/maxresdefault.jpg');
   if (!cover || cover.startsWith('http')) cover = await remoteToPhoto(thumb);
   r.photo = cover;
-  s2.ok();
+  s3.ok();
   return r;
 }
 
-async function importSocial(pf, log) {
+/* TikTok: oEmbed (didascalia completa) + dati della pagina; i link brevi vm.tiktok.com vengono risolti */
+async function tiktokInfo(url) {
+  const out = { caption: '', thumb: '', author: '', canonical: '' };
+  const oembed = async (u) => {
+    let j = null;
+    try { const r = await fetchTimeout('https://www.tiktok.com/oembed?url=' + encodeURIComponent(u), 12000); if (r.ok) j = await r.json(); } catch {}
+    if (!j) { try { j = await proxyFetch('https://www.tiktok.com/oembed?url=' + encodeURIComponent(u), 'json'); } catch {} }
+    if (j && (j.title || j.thumbnail_url)) { out.caption = out.caption || j.title || ''; out.thumb = out.thumb || j.thumbnail_url || ''; out.author = out.author || j.author_name || ''; }
+  };
+  if (/\/video\/\d+/.test(url)) await oembed(url);
+  if (!out.caption) {
+    try {
+      const html = await proxyFetch(url);
+      const can = html.match(/https:\/\/www\.tiktok\.com\/@[\w.-]+\/(?:video|photo)\/\d+/); if (can) out.canonical = can[0];
+      const sc = html.match(/<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>([\s\S]*?)<\/script>/);
+      if (sc) { try { const it = JSON.parse(sc[1]).__DEFAULT_SCOPE__['webapp.video-detail'].itemInfo.itemStruct; out.caption = it.desc || ''; out.thumb = (it.video && (it.video.originCover || it.video.cover)) || ''; out.author = (it.author && it.author.nickname) || ''; } catch {} }
+      if (!out.caption) { const d = html.match(/"desc":"((?:[^"\\]|\\.)*)"/); if (d) out.caption = jsonUnescape(d[1]); }
+      if (!out.thumb) { const m = html.match(/<meta property="og:image" content="([^"]+)"/); if (m) out.thumb = m[1].replace(/&amp;/g, '&'); }
+      if (!out.caption) { const m = html.match(/<meta (?:property|name)="(?:og:)?description" content="([^"]*)"/); if (m) out.caption = ldText(m[1]); }
+    } catch {}
+    if (!out.caption && out.canonical) await oembed(out.canonical);
+  }
+  return out;
+}
+/* Instagram: la pagina "embed/captioned" è pubblica e contiene la didascalia completa */
+async function instagramInfo(url) {
+  const out = { caption: '', thumb: '', author: '' };
+  let u = url;
+  if (/instagr\.am|\/share\//.test(url)) { try { const html = await proxyFetch(url); const m = html.match(/instagram\.com\/(?:p|reel|reels|tv)\/[\w-]+/); if (m) u = 'https://www.' + m[0]; } catch {} }
+  const code = (u.match(/\/(?:p|reel|reels|tv)\/([\w-]+)/) || [])[1];
+  if (code) {
+    try {
+      const html = await proxyFetch('https://www.instagram.com/p/' + code + '/embed/captioned/');
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const cap = doc.querySelector('.Caption');
+      if (cap) {
+        const un = cap.querySelector('.CaptionUsername'); if (un) { out.author = un.textContent.trim(); un.remove(); }
+        cap.querySelectorAll('.CaptionComments').forEach((n) => n.remove());
+        cap.querySelectorAll('br').forEach((n) => n.replaceWith('\n'));
+        out.caption = cap.textContent.replace(/\n{3,}/g, '\n\n').trim();
+      }
+      if (!out.caption) { const m = html.match(/\\?"caption\\?":\{[^}]*?\\?"text\\?":\\?"((?:[^"\\]|\\.)*?)\\?"/) || html.match(/"edge_media_to_caption":\{"edges":\[\{"node":\{"text":"((?:[^"\\]|\\.)*)"/); if (m) out.caption = jsonUnescape(m[1].replace(/\\\\/g, '\\')); }
+      const img = doc.querySelector('.EmbeddedMediaImage, img.EmbeddedMediaImage'); if (img) out.thumb = img.getAttribute('src') || '';
+      if (!out.thumb) { const m = html.match(/"display_url":"([^"]+)"/); if (m) out.thumb = jsonUnescape(m[1]); }
+      if (!out.author) { const a = doc.querySelector('.UsernameText'); if (a) out.author = a.textContent.trim(); }
+    } catch {}
+  }
+  if (!out.caption) {
+    try {
+      const page = findJsonLdRecipe(await proxyFetch(u));
+      const d = page.ogDesc || ''; const q = d.match(/:\s*["“](.+)["”]\s*\.?$/s);
+      out.caption = q ? q[1] : d; out.thumb = out.thumb || page.ogImage;
+    } catch {}
+  }
+  return out;
+}
+async function facebookInfo(url) {
+  const out = { caption: '', thumb: '', author: '' };
+  for (const u of [url, url.replace('://www.', '://m.').replace('://facebook.', '://m.facebook.')]) {
+    try { const page = findJsonLdRecipe(await proxyFetch(u)); const c = [page.ogTitle, page.ogDesc].filter(Boolean).join('\n'); if (c.length > out.caption.length) { out.caption = c; out.thumb = page.ogImage; } } catch {}
+    if (out.caption.length > 200) break;
+  }
+  return out;
+}
+async function importSocial(pf, log, hint) {
   const name = PLATFORM_NAME[pf.type];
-  let caption = '', thumb = '', author = '';
-  const s1 = log('Leggo il post di ' + name);
-  try {
-    if (pf.type === 'tiktok') {
-      let j;
-      try { const r = await fetchTimeout('https://www.tiktok.com/oembed?url=' + encodeURIComponent(pf.url), 12000); j = await r.json(); }
-      catch { j = await proxyFetch('https://www.tiktok.com/oembed?url=' + encodeURIComponent(pf.url), 'json'); }
-      caption = j.title || ''; thumb = j.thumbnail_url || ''; author = j.author_name || '';
-    } else {
-      const page = findJsonLdRecipe(await proxyFetch(pf.url));
-      caption = [page.ogTitle, page.ogDesc].filter(Boolean).join('\n'); thumb = page.ogImage;
-    }
-    if (caption) s1.ok('Didascalia letta'); else s1.ko('Il post non mostra la didascalia');
-  } catch { s1.ko(name + ' non lascia leggere il post da fuori'); }
+  const s1 = log('Leggo la didascalia del post di ' + name);
+  const info = pf.type === 'tiktok' ? await tiktokInfo(pf.url) : pf.type === 'instagram' ? await instagramInfo(pf.url) : await facebookInfo(pf.url);
+  let caption = info.caption || '';
+  if (hint && hint.length > 40 && !caption.includes(hint.slice(0, 40))) caption = (caption ? caption + '\n\n' : '') + hint;
+  const hasRecipe = looksLikeRecipe(caption);
+  if (caption) s1.ok(caption.length + ' caratteri' + (hasRecipe ? ' · contiene la ricetta' : ' · senza dosi scritte')); else s1.ko(name + ' non lascia leggere il post da fuori');
 
   if (!AI.has()) throw Object.assign(new Error('Per convertire i post serve la chiave AI (gratuita): inseriscila in Impostazioni.'), { code: 'nokey' });
   const s2 = log('L\'AI ricava la ricetta');
+  const parts = [{ text: 'Post ' + name + ' (' + pf.url + ')' + (info.author ? ' di ' + info.author : '') + '.\nDidascalia:\n' + (caption || '(non disponibile)') + '\n\nSe la didascalia non contiene la ricetta (solo hashtag, "ricetta nei commenti", "link in bio"…) NON inventarla: rispondi notARecipe.' }];
+  const thumbData = await imageToPart(info.thumb);
+  if (thumbData) { parts.push({ inlineData: { mimeType: 'image/jpeg', data: thumbData.split(',')[1] } }); parts.push({ text: '(Sopra: anteprima del video/post, utile per riconoscere il piatto.)' }); }
   let res = null;
-  const parts = [{ text: 'Post ' + name + ' (' + pf.url + ')' + (author ? ' di ' + author : '') + '.\nDidascalia:\n' + (caption || '(non disponibile)') }];
-  if (thumb) {
-    try {
-      const blob = await proxyFetch(thumb, 'blob');
-      const data = await compressImage(await fileToDataURL(blob), 1024);
-      parts.push({ inlineData: { mimeType: 'image/jpeg', data: data.split(',')[1] } });
-      parts.push({ text: '(Sopra: anteprima del video/post, utile per riconoscere il piatto.)' });
-      thumb = data;
-    } catch {}
-  }
-  if (caption && caption.length > 60) {
-    try { res = await AI.generate({ system: RECIPE_RULES, parts }); } catch (e) { s2.ko(e.message); throw e; }
-  }
+  if (caption.length > 40) { try { res = await AI.generate({ system: RECIPE_RULES, parts }); } catch (e) { s2.ko(e.message); throw e; } }
   if (!res || !res.data || res.data.notARecipe) {
-    try { res = await AI.generateWithFallback({ system: RECIPE_RULES, tools: ['url_context'], parts: [{ text: 'Leggi questo post e ricava la ricetta: ' + pf.url + '\nDidascalia nota: ' + (caption || 'nessuna') }] }); } catch { res = null; }
-  }
-  if (!res || !res.data || res.data.notARecipe) {
-    s2.ko('Il post non contiene la ricetta scritta');
-    throw Object.assign(new Error('Da fuori ' + name + ' mostra solo il video, non la ricetta. Soluzione rapida: apri il post, copia la didascalia (o fai uno screenshot dei passaggi) e usa "Testo" o "Foto".'), { code: 'social' });
+    s2.ko(caption ? 'la didascalia non contiene la ricetta' : 'nessuna didascalia');
+    throw Object.assign(new Error((caption ? 'La didascalia di questo post non contiene la ricetta (è spiegata solo nel video).' : name + ' non mostra il contenuto del post a chi non ha fatto l\'accesso.') + ' Soluzione: salva il video sul telefono e usa "Video" (l\'AI lo guarda), oppure fai uno screenshot dei passaggi e usa "Foto".'), { code: 'social' });
   }
   s2.ok();
-  const r = fromAiRecipe(res.data, { source: { type: pf.type, url: pf.url, author } });
+  const r = fromAiRecipe(res.data, { source: { type: pf.type, url: pf.url, author: info.author } });
   if (caption) reconcileDoses(r, caption);
-  r.photo = thumb || '';
-  if (!caption) r.warnings.push('Ricetta ricavata senza leggere la didascalia completa: verifica dosi e passaggi.');
+  r.photo = thumbData || '';
   return r;
+}
+
+/* Video salvato sul telefono: lo carico su Google, l'AI lo guarda e prendo le foto dei passaggi dai fotogrammi */
+function videoFrame(url, t, max = 960) {
+  return new Promise((res) => {
+    const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.preload = 'auto'; v.src = url;
+    const done = (x) => { v.removeAttribute('src'); v.load(); res(x); };
+    const tm = setTimeout(() => done(''), 8000);
+    v.addEventListener('loadedmetadata', () => { v.currentTime = Math.min(Math.max(0, t), Math.max(0, (v.duration || 0) - 0.2)); }, { once: true });
+    v.addEventListener('seeked', () => {
+      try { const k = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight)); const c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k); c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); clearTimeout(tm); done(c.toDataURL('image/jpeg', 0.8)); }
+      catch { clearTimeout(tm); done(''); }
+    }, { once: true });
+    v.addEventListener('error', () => { clearTimeout(tm); done(''); }, { once: true });
+  });
+}
+function videoDuration(url) { return new Promise((res) => { const v = document.createElement('video'); v.preload = 'metadata'; v.src = url; v.onloadedmetadata = () => res(v.duration || 0); v.onerror = () => res(0); setTimeout(() => res(0), 6000); }); }
+async function importFromVideoFile(file, note, log) {
+  if (!AI.has()) throw Object.assign(new Error('Per far guardare il video all\'AI serve la chiave gratuita: inseriscila in Impostazioni.'), { code: 'nokey' });
+  const mb = file.size / 1048576;
+  const local = URL.createObjectURL(file);
+  try {
+    const dur = await videoDuration(local);
+    const s1 = log('Carico il video (' + mb.toFixed(1) + ' MB' + (dur ? ', ' + mmss(dur) : '') + ')');
+    let part = null;
+    try { part = { fileData: await AI.upload(file, (i) => { if (i === 2) s1.ok('caricato, Google lo sta elaborando…'); }) }; s1.ok('caricato'); }
+    catch (e) {
+      if (mb <= 18) { part = { inlineData: { mimeType: file.type || 'video/mp4', data: (await fileToDataURL(file)).split(',')[1] } }; s1.ok('invio diretto'); }
+      else { s1.ko(e.message); throw new Error('Non sono riuscito a caricare il video (' + e.message + '). Prova con un video più corto o leggero.'); }
+    }
+    const s2 = log('L\'AI guarda il video: può volerci un minuto o due');
+    const sys = RECIPE_RULES + '\nPer ogni passaggio indica in "videoAt" il secondo del video in cui si vede meglio quel passaggio (numero intero). Usa quello che si vede, che si sente e le scritte a schermo.';
+    let res;
+    try { res = await AI.generate({ system: sys, parts: [part, { text: 'Trasforma questa video ricetta nel formato richiesto.' + (note ? '\nNote o didascalia del post:\n' + note : '') }], temperature: 0.3, timeoutMs: 300000, maxModels: 3 }); }
+    catch (e) { s2.ko(e.message); throw e; }
+    if (!res.data || res.data.notARecipe) { s2.ko(); throw new Error('Nel video non ho trovato una ricetta.'); }
+    s2.ok();
+    const r = fromAiRecipe(res.data, { source: { type: 'video', url: (note.match(/https?:\/\/\S+/) || [''])[0] } });
+    if (note) reconcileDoses(r, note);
+    const steps = r.phases.flatMap((p) => p.steps).filter((x) => x.videoAt != null).slice(0, 14);
+    const s3 = log('Prendo le foto dei passaggi dal video');
+    let n = 0;
+    for (const st of steps) { const f = await videoFrame(local, st.videoAt, 800); if (f) { st.photo = f; n++; } }
+    const last = steps.length ? steps[steps.length - 1].videoAt : (dur || 2) * 0.9;
+    r.photo = await videoFrame(local, Math.max(last, (dur || 0) * 0.92), 1280) || (steps[0] && steps[0].photo) || '';
+    r.phases.forEach((p) => p.steps.forEach((x) => (x.videoAt = null)));
+    s3.ok(n ? n + ' foto' : 'nessuna');
+    return r;
+  } finally { setTimeout(() => URL.revokeObjectURL(local), 1000); }
 }
 
 async function importFromText(text, log) {
@@ -2178,6 +2344,7 @@ function renderImport(app) {
     <button class="${t === 'link' ? 'on' : ''}" data-act="imp-tab" data-t="link">Link</button>
     <button class="${t === 'testo' ? 'on' : ''}" data-act="imp-tab" data-t="testo">Testo</button>
     <button class="${t === 'foto' ? 'on' : ''}" data-act="imp-tab" data-t="foto">Foto</button>
+    <button class="${t === 'video' ? 'on' : ''}" data-act="imp-tab" data-t="video">Video</button>
   </div>
   ${!AI.has() ? `<div class="notice" style="margin-bottom:12px"><b>Chiave AI mancante.</b> Senza chiave posso importare solo dai siti di ricette che pubblicano i dati in modo standard (es. GialloZafferano, Cookist, BBC Good Food). Per video, post, testo e foto <a href="#/impostazioni">inserisci la chiave gratuita</a>: ci vogliono 2 minuti.</div>` : ''}
   <div class="card stack" id="impBox">
@@ -2186,7 +2353,13 @@ function renderImport(app) {
       <div class="chipinput"><input type="url" id="impUrl" placeholder="https://…" value="${esc(S.importUrl)}" inputmode="url"><button class="iconbtn" data-act="imp-paste" aria-label="Incolla">${ic('paste')}</button></div>
       <div class="platforms"><span class="chip">Siti di ricette</span><span class="chip">${ic('yt')} YouTube</span><span class="chip">TikTok</span><span class="chip">Instagram</span><span class="chip">Facebook</span></div></div>
       <button class="btn primary block" data-act="imp-go">${ic('sparkle')} Converti</button>
-      <p class="small dim" style="margin:0">Dal telefono puoi anche usare <b>Condividi → In Cucina</b> direttamente da YouTube, TikTok o dal browser (dopo aver installato l'app sulla schermata Home).</p>` : ''}
+      <p class="small dim" style="margin:0">Dal telefono puoi anche usare <b>Condividi → In Cucina</b> direttamente da YouTube, TikTok, Instagram o dal browser (dopo aver installato l'app sulla schermata Home).</p>
+      <details class="small"><summary style="cursor:pointer;font-weight:600">Cosa riesco a leggere da ogni social</summary>
+        <ul style="margin:6px 0 0;padding-left:18px">
+          <li><b>YouTube</b>: l'AI guarda il video e legge la descrizione (dove spesso ci sono le dosi esatte).</li>
+          <li><b>Instagram e TikTok</b>: leggo la didascalia. Se la ricetta è solo spiegata a voce nel video, salva il video e usa <b>Video</b>.</li>
+          <li><b>Facebook</b>: spesso richiede l'accesso; se non funziona usa <b>Video</b>, <b>Foto</b> o <b>Testo</b>.</li>
+        </ul></details>` : ''}
     ${t === 'testo' ? `
       <div><label class="f">Incolla la ricetta (anche disordinata: didascalia di un post, messaggio, appunti)</label>
       <textarea id="impText" rows="9" placeholder="Incolla qui…"></textarea></div>
@@ -2196,6 +2369,12 @@ function renderImport(app) {
       <div class="thumbs" id="impThumbs"></div>
       <label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="impCover"> Usa la prima foto come foto del piatto</label>
       <button class="btn primary block" data-act="imp-photo">${ic('sparkle')} Converti</button>` : ''}
+    ${t === 'video' ? `
+      <div class="photo-pick"><div class="lbl">${ic('play')}<span><b>Scegli un video dal telefono</b><br>Un reel o un TikTok salvato, una registrazione dello schermo, un video tuo. L'AI lo guarda, scrive la ricetta e prende le foto dei passaggi.</span></div><input type="file" accept="video/*" id="impVideo"></div>
+      <div id="impVidInfo" class="small dim"></div>
+      <div><label class="f">Didascalia o link del post (facoltativo, aiuta con le dosi)</label><textarea id="impVidNote" rows="3" placeholder="Incolla qui la didascalia o il link"></textarea></div>
+      <button class="btn primary block" data-act="imp-video">${ic('sparkle')} Converti</button>
+      <p class="small dim" style="margin:0">Come salvare: <b>TikTok</b> → Condividi → Salva video. <b>Instagram</b> → registra lo schermo mentre guardi il reel. Va bene fino a qualche minuto di video.</p>` : ''}
     <ul class="steps-log" id="impLog"></ul>
     <div id="impErr"></div>
   </div>`;
@@ -2204,6 +2383,7 @@ function renderImport(app) {
     $('#impThumbs').innerHTML = (await Promise.all(files.map((f) => fileToPhoto(f, 300)))).map((d) => `<img src="${d}" alt="">`).join('');
   });
   if (t === 'link') $('#impUrl').addEventListener('keydown', (e) => { if (e.key === 'Enter') runImport('link'); });
+  if (t === 'video') $('#impVideo').addEventListener('change', (e) => { const f = e.target.files[0]; $('#impVidInfo').textContent = f ? f.name + ' · ' + (f.size / 1048576).toFixed(1) + ' MB' : ''; });
   if (S.autoImport && t === 'link') { S.autoImport = false; runImport('link'); }
 }
 function makeLogger() {
@@ -2225,12 +2405,16 @@ async function runImport(kind) {
       const url = ($('#impUrl').value || '').trim().match(/https?:\/\/\S+/)?.[0];
       if (!url) { toast('Incolla un link valido'); return; }
       S.importUrl = url;
-      r = S.importPick ? await importWeb(url, log, S.importPick) : await importFromUrl(url, log);
-      S.importPick = null;
+      r = S.importPick ? await importWeb(url, log, S.importPick) : await importFromUrl(url, log, S.importHint || '');
+      S.importPick = null; S.importHint = '';
     } else if (kind === 'text') {
       const text = $('#impText').value.trim();
       if (text.length < 30) { toast('Incolla il testo della ricetta'); return; }
       r = await importFromText(text, log);
+    } else if (kind === 'video') {
+      const f = $('#impVideo').files[0];
+      if (!f) { toast('Scegli un video'); return; }
+      r = await importFromVideoFile(f, $('#impVidNote').value.trim(), log);
     } else {
       const files = [...$('#impFiles').files].slice(0, 6);
       if (!files.length) { toast('Scegli almeno una foto'); return; }
@@ -2243,7 +2427,7 @@ async function runImport(kind) {
     $('#impErr').innerHTML = `<div class="notice" style="margin-top:8px"><b>Non ci sono riuscito.</b> ${esc(e.message)}
       ${e.code === 'nokey' ? `<div style="margin-top:8px"><a class="btn sm primary" href="#/impostazioni">Inserisci la chiave AI</a></div>` : ''}
       ${e.code === 'multi' ? `<div class="stack" style="margin-top:10px">${e.titles.map((t) => `<button class="btn block" style="justify-content:flex-start;text-align:left" data-act="imp-pick" data-t="${esc(t)}">${ic('chef')} ${esc(t)}</button>`).join('')}</div>` : ''}
-      ${e.code === 'social' ? `<div class="row" style="margin-top:8px"><button class="btn sm" data-act="imp-tab" data-t="testo">${ic('text')} Usa Testo</button><button class="btn sm" data-act="imp-tab" data-t="foto">${ic('image')} Usa Foto</button></div>` : ''}</div>`;
+      ${e.code === 'social' ? `<div class="row" style="margin-top:8px"><button class="btn sm primary" data-act="imp-tab" data-t="video">${ic('play')} Usa Video</button><button class="btn sm" data-act="imp-tab" data-t="foto">${ic('image')} Foto</button><button class="btn sm" data-act="imp-tab" data-t="testo">${ic('text')} Testo</button></div>` : ''}</div>`;
   } finally { if (btn) btn.disabled = false; }
 }
 
@@ -3020,6 +3204,7 @@ const ACT = {
   'imp-pick': (a) => { S.importPick = a.dataset.t; runImport('link'); },
   'imp-text': () => runImport('text'),
   'imp-photo': () => runImport('photo'),
+  'imp-video': () => runImport('video'),
   // frigo
   'fr-add': () => frAdd(),
   'fr-sug': (a) => { const f = frigoState(); f.items.push(a.dataset.v); saveFrigo(); frRedraw(); },
@@ -3138,6 +3323,7 @@ window.addEventListener('beforeunload', (e) => { if (S.edDirty) { e.preventDefau
   if (link) {
     history.replaceState(null, '', location.pathname + '#/importa');
     S.importTab = 'link'; S.importUrl = link[0]; S.autoImport = true;
+    S.importHint = shared.replace(/https?:\/\/\S+/g, ' ').replace(/\s+/g, ' ').trim();
     await router();
   } else await router();
   window.addEventListener('hashchange', router);

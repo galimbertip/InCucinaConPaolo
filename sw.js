@@ -1,7 +1,7 @@
 // In Cucina con Paolo — service worker
 // Rete prima (sempre rivalidata col server, così gli aggiornamenti arrivano subito),
 // cache come riserva quando sei offline. Le chiamate esterne (AI, siti) non vengono toccate.
-const CACHE = 'incucina-v1.7.0';
+const CACHE = 'incucina-v1.8.0';
 const SHELL = [
   './',
   './index.html',

@@ -3,7 +3,7 @@
 Ricettario personale in formato unico, installabile come app.
 
 - **Crea** ricette con testo e foto (copertina e foto dei passaggi)
-- **Importa** da link: siti di ricette, YouTube, TikTok, Instagram, Facebook — oppure da testo o foto/screenshot
+- **Importa** da link: siti di ricette, YouTube (video + descrizione), TikTok (anche link brevi), Instagram (didascalia dalla versione pubblica del post), Facebook — oppure da testo, foto/screenshot o **video salvato** (l'AI lo guarda e prende le foto dei passaggi)
 - **Cosa cucino?**: domande guidate (portata, occasione, persone e tempo, richieste, allergie e salute) → proposte → tasto + per salvarle nel ricettario
 - **Lista della spesa**: scegli le ricette e le persone per ciascuna, le quantità vengono sommate e ordinate per reparto; spunte, voci libere, condivisione
 - **Svuota frigo**: ingredienti, strumenti, tempo e persone → idee, con "Altre idee" e "Fammi la ricetta"
