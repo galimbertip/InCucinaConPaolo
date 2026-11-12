@@ -2,6 +2,8 @@
 
 Ricettario personale in formato unico, installabile come app.
 
+- **Scansiona** un prodotto al supermercato (codice a barre con il lettore integrato di Android/Chrome, o foto della confezione): dati da Open Food Facts, ricette adatte a quel prodotto, mancanti nella lista della spesa
+- **Home per sezioni**: Trova un'idea, Aggiungi al ricettario, Spesa, anteprima del ricettario; barra Home / Ricettario / Scansiona / Spesa / Altro
 - **Crea** ricette con testo e foto (copertina e foto dei passaggi)
 - **Importa** da link: siti di ricette, YouTube (video + descrizione), TikTok (anche link brevi), Instagram (didascalia dalla versione pubblica del post), Facebook — oppure da testo, foto/screenshot o **video salvato** (l'AI lo guarda e prende le foto dei passaggi)
 - **Cosa cucino?**: domande guidate (portata, occasione, persone e tempo, richieste, allergie e salute) → proposte → tasto + per salvarle nel ricettario

@@ -3,6 +3,12 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.9.0 — 12 novembre 2026
+    - Scansiona: BarcodeDetector + Open Food Facts, foto confezione con AI,
+      ricette per il prodotto, mancanti in lista spesa.
+    - Nuova home per sezioni, pagina Ricettario, barra Home/Ricettario/
+      Scansiona/Spesa/Altro.
+
   v1.8.0 — 28 ottobre 2026
     - Import social/video rivisto: descrizione YouTube + video, timeout
       lungo senza ripetizioni, Instagram via embed/captioned, TikTok con
@@ -169,6 +175,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .nav a.fab{justify-self:center}
 .nav a.fab span.b{width:52px;height:52px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),var(--violet));color:var(--on-accent);box-shadow:0 6px 20px color-mix(in srgb,var(--accent) 40%,transparent);margin-top:-18px}
 .nav a.fab svg{width:26px;height:26px}
+.nav a.fab .fl{margin-top:2px}
+.nav a.fab.on .fl{color:var(--accent)}
+.nav a.navcart{position:relative}
+.nav a.navcart .badge-n{top:0;right:calc(50% - 22px)}
 
 /* Generic */
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}
@@ -211,6 +221,22 @@ textarea{min-height:80px;resize:vertical;line-height:1.45}
 .sectionhead .aside{margin-left:auto}
 
 /* Home */
+.hsec{display:flex;align-items:center;gap:8px;margin:22px 0 10px;font-family:"Space Grotesk",system-ui,sans-serif;font-weight:700;font-size:1.02rem}
+.hsec .n{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;font-size:.8rem;background:linear-gradient(135deg,var(--accent),var(--violet));color:var(--on-accent)}
+.hsec .more{margin-left:auto;font-size:.86rem;font-weight:600;text-decoration:none}
+.htiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ht{display:flex;flex-direction:column;gap:8px;padding:14px 12px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line);text-decoration:none;color:var(--text);box-shadow:var(--shadow)}
+.ht>svg{width:26px;height:26px;color:var(--accent);flex:none}
+.ht b{display:block;font-family:"Space Grotesk",system-ui,sans-serif;font-size:.98rem;line-height:1.15}
+.ht small{display:block;font-size:.78rem;color:var(--dim);line-height:1.3;margin-top:3px}
+.ht.big{grid-column:1/-1;flex-direction:row;align-items:center;gap:14px;padding:16px 14px;border:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel))}
+.ht.big>svg{width:36px;height:36px}
+.ht.big b{font-size:1.08rem}
+.hshop{display:flex;align-items:center;gap:12px;padding:14px;border-radius:var(--r);background:var(--panel-2);border:1px solid var(--line);text-decoration:none;color:var(--text)}
+.hshop>svg{width:24px;height:24px;color:var(--accent);flex:none}
+.hshop>span{flex:1;min-width:0}
+.hshop b{display:block;font-family:"Space Grotesk",system-ui,sans-serif}
+.hshop small{display:block;color:var(--dim);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .quick{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}
 @media (min-width:640px){.quick{grid-template-columns:repeat(4,1fr)}}
 .quick a.hl{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 16%,var(--panel)),color-mix(in srgb,var(--violet) 14%,var(--panel)));border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
@@ -382,6 +408,22 @@ table.nutri tr.sub td:first-child{padding-left:18px;color:var(--dim)}
 .idea .miss{font-size:.88rem;margin-top:6px}
 .idea .links{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .chipinput{display:flex;gap:8px}
+.scanbox{position:relative;border-radius:var(--r);overflow:hidden;background:#05070f;aspect-ratio:4/3;max-height:52vh}
+.scanbox video{width:100%;height:100%;object-fit:cover;display:block}
+.scanbox.off{aspect-ratio:auto;min-height:120px}
+.scanbox.off video,.scanbox.off .scanframe{display:none}
+.scanframe{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.scanframe i{width:72%;height:34%;border:3px solid #3fe0f0;border-radius:14px;box-shadow:0 0 0 9999px rgba(5,7,15,.38)}
+.scanmsg{position:absolute;left:0;right:0;bottom:0;padding:10px 14px;color:#eaf3fb;font-size:.92rem;text-align:center;background:rgba(5,7,15,.62)}
+.scanbox.off .scanmsg{position:static;background:none;padding:28px 16px}
+.scantorch{position:absolute;top:10px;right:10px;color:#fff;background:rgba(5,7,15,.55);border-color:transparent}
+.scantorch.on{background:#3fe0f0;color:#04121a}
+.prod{display:flex;gap:14px;align-items:flex-start;margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px;box-shadow:var(--shadow)}
+.prod img,.prod .ph0{width:92px;height:92px;border-radius:12px;object-fit:contain;background:#fff;flex:none;display:grid;place-items:center;color:var(--accent)}
+.prod .ph0{background:var(--panel-2)} .prod .ph0 svg{width:40px;height:40px}
+.prod>div{flex:1;min-width:0}
+.tobuy{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line);font-size:.92rem}
+.tobuy ul{margin:4px 0 4px;padding-left:18px}
 .shop-rec{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);flex-wrap:wrap}
 .shop-rec:last-child{border-bottom:0}
 .shop-rt{display:flex;align-items:center;gap:10px;flex:1 1 160px;min-width:0;color:var(--text);text-decoration:none}
@@ -467,17 +509,17 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
   <div class="wrap">
     <a href="#/" aria-label="Home"><img src="icons/gpverse-logo.jpg" alt="GPverse"></a>
     <div class="brand">In Cucina con Paolo<small>GPverse · <button class="verbtn" data-act="versions" id="verBtn" aria-label="Versioni e novità">v—</button></small></div>
-    <div class="mast-r"><div id="mastAction"></div><a class="iconbtn cartbtn" href="#/spesa" aria-label="Lista della spesa"><svg viewBox="0 0 24 24"><use href="#i-cart"/></svg><span class="badge-n" id="cartN"></span></a></div>
+    <div class="mast-r"><div id="mastAction"></div></div>
   </div>
 </header>
 <main id="app" class="wrap"></main>
 <nav class="nav" aria-label="Navigazione">
   <div class="wrap">
-    <a href="#/" data-nav="home"><svg viewBox="0 0 24 24"><use href="#i-book"/></svg>Ricette</a>
-    <a href="#/importa" data-nav="importa"><svg viewBox="0 0 24 24"><use href="#i-link"/></svg>Importa</a>
-    <a href="#/nuova" data-nav="nuova" class="fab" aria-label="Nuova ricetta"><span class="b"><svg viewBox="0 0 24 24"><use href="#i-plus"/></svg></span></a>
-    <a href="#/frigo" data-nav="frigo"><svg viewBox="0 0 24 24"><use href="#i-fridge"/></svg>Svuota frigo</a>
-    <a href="#/impostazioni" data-nav="impostazioni"><svg viewBox="0 0 24 24"><use href="#i-gear"/></svg>Impostazioni</a>
+    <a href="#/" data-nav="home"><svg viewBox="0 0 24 24"><use href="#i-home"/></svg>Home</a>
+    <a href="#/ricette" data-nav="ricette"><svg viewBox="0 0 24 24"><use href="#i-book"/></svg>Ricettario</a>
+    <a href="#/scansiona" data-nav="scansiona" class="fab" aria-label="Scansiona un prodotto"><span class="b"><svg viewBox="0 0 24 24"><use href="#i-barcode"/></svg></span><span class="fl">Scansiona</span></a>
+    <a href="#/spesa" data-nav="spesa" class="navcart"><svg viewBox="0 0 24 24"><use href="#i-cart"/></svg><span class="badge-n" id="cartN"></span>Spesa</a>
+    <a href="#/impostazioni" data-nav="impostazioni"><svg viewBox="0 0 24 24"><use href="#i-dots"/></svg>Altro</a>
   </div>
 </nav>
 <div class="timers" id="timers"></div>
@@ -523,6 +565,10 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
     <symbol id="i-dl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
     <symbol id="i-ul" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></symbol>
+    <symbol id="i-barcode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 8v8M11 8v8M14 8v8M17 8v8"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
     <symbol id="i-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2.5 3.5h3l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.1L21 8H6.6"/></symbol>
     <symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.6L19.5 10.5 13.9 12.4 12 18l-1.9-5.6L4.5 10.5l5.6-1.9z"/><path d="M19 3v4M17 5h4"/></symbol>
   </defs>
@@ -533,8 +579,14 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.0';
 const CHANGELOG = [
+  { v: '1.9.0', d: '12 novembre 2026', items: [
+    'Nuova funzione Scansiona: inquadri il codice a barre di un prodotto al supermercato (o fotografi la confezione) e ti propongo ricette fatte apposta per quel prodotto, con l\'elenco di cosa ti serve ancora e il pulsante per metterlo nella lista della spesa.',
+    'Dati del prodotto (nome, formato, allergeni) presi dal database aperto Open Food Facts; ricette del tuo ricettario che lo usano già in cima.',
+    'Home ridisegnata per sezioni: Trova un\'idea, Aggiungi al ricettario, Spesa (con lo stato della lista) e un\'anteprima del ricettario.',
+    'Nuova barra in basso: Home, Ricettario, Scansiona al centro, Spesa (con il numero di ricette) e Altro. Il ricettario completo ha ora una pagina sua.'
+  ]},
   { v: '1.8.0', d: '28 ottobre 2026', items: [
     'YouTube: oltre a guardare il video l\'AI legge titolo e descrizione, usando le dosi scritte lì; se il video non si può analizzare la ricetta viene ricavata dalla descrizione. Video lunghi analizzati più in fretta e senza interruzioni a metà.',
     'Instagram: la didascalia completa ora si legge anche senza accesso (dalla versione pubblica del post).',
@@ -1088,7 +1140,7 @@ function detectPlatform(url) {
   if (/(facebook\.com|fb\.watch|fb\.com)$/.test(h)) return { type: 'facebook', url };
   return { type: 'web', url };
 }
-const PLATFORM_NAME = { web: 'Sito web', youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', photo: 'Foto', text: 'Testo', ai: 'Svuota frigo', consiglio: 'Cosa cucino?', video: 'Video', manual: 'Ricetta mia' };
+const PLATFORM_NAME = { web: 'Sito web', youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', facebook: 'Facebook', photo: 'Foto', text: 'Testo', ai: 'Svuota frigo', consiglio: 'Cosa cucino?', scan: 'Scansiona', video: 'Video', manual: 'Ricetta mia' };
 
 function isoDur(s) {
   if (!s || typeof s !== 'string') return 0;
@@ -1909,19 +1961,23 @@ async function router() {
   const parts = h.split('/').filter(Boolean);
   const app = $('#app');
   if (S.cook && parts[0] !== 'cucina') exitCook(true);
+  if (!parts.length) stopScan();
   window.scrollTo(0, 0);
   setMastAction('');
   try {
     if (!parts.length) { setNav('home'); return renderHome(app); }
+    if (parts[0] !== 'scansiona') stopScan();
     switch (parts[0]) {
-      case 'r': setNav('home'); return renderRecipe(app, decodeURIComponent(parts[1]));
+      case 'ricette': setNav('ricette'); return renderBook(app);
+      case 'scansiona': setNav('scansiona'); return renderScan(app);
+      case 'r': setNav('ricette'); return renderRecipe(app, decodeURIComponent(parts[1]));
       case 'cucina': return startCook(decodeURIComponent(parts[1]));
-      case 'nuova': setNav('nuova'); return renderEditor(app, null);
-      case 'modifica': setNav('home'); return renderEditor(app, decodeURIComponent(parts[1]));
-      case 'importa': setNav('importa'); return renderImport(app);
-      case 'frigo': setNav('frigo'); return renderFrigo(app);
+      case 'nuova': setNav('ricette'); return renderEditor(app, null);
+      case 'modifica': setNav('ricette'); return renderEditor(app, decodeURIComponent(parts[1]));
+      case 'importa': setNav('home'); return renderImport(app);
+      case 'frigo': setNav('home'); return renderFrigo(app);
       case 'consigli': setNav('home'); return renderWizard(app);
-      case 'spesa': setNav(''); return renderShop(app);
+      case 'spesa': setNav('spesa'); return renderShop(app);
       case 'impostazioni': setNav('impostazioni'); return renderSettings(app);
       default: location.hash = '#/';
     }
@@ -1932,16 +1988,62 @@ async function router() {
    HOME
    ========================================================= */
 function renderHome(app) {
+  const d = Shop.get();
+  const plan = d.plan.filter((p) => S.recipes.some((r) => r.id === p.id));
+  let toBuy = 0; if (plan.length || d.extra.length) { const b = buildShopList(); toBuy = b.list.filter((x) => !b.d.checked[x.key]).length + b.d.extra.filter((x) => !x.done).length; }
+  const n = S.recipes.length;
+  app.innerHTML = `
+    <div class="search" style="margin-top:16px">${ic('search')}<input type="search" id="hq" placeholder="Cerca nel ricettario" enterkeyhint="search"></div>
+    ${!AI.has() ? `<div class="notice" style="margin-top:12px"><b>Primo passo:</b> inserisci la <a href="#/impostazioni">chiave AI gratuita</a>, serve per scansionare, importare video e avere idee.</div>` : ''}
+
+    <div class="hsec"><span class="n">1</span>Trova un'idea</div>
+    <div class="htiles">
+      <a href="#/scansiona" class="ht big">${ic('barcode')}<span><b>Scansiona un prodotto</b><small>Codice a barre o foto della confezione: ti dico cosa cucinarci</small></span></a>
+      <a href="#/consigli" class="ht">${ic('chef')}<span><b>Cosa cucino?</b><small>5 domande, ti propongo ricette</small></span></a>
+      <a href="#/frigo" class="ht">${ic('fridge')}<span><b>Svuota frigo</b><small>Idee con quello che hai</small></span></a>
+    </div>
+
+    <div class="hsec"><span class="n">2</span>Aggiungi al ricettario</div>
+    <div class="htiles">
+      <a href="#/nuova" class="ht">${ic('edit')}<span><b>Scrivila tu</b><small>Testo e foto</small></span></a>
+      <a href="#/importa" class="ht">${ic('dl')}<span><b>Importa</b><small>Link, video, foto, testo</small></span></a>
+    </div>
+
+    ${plan.length || d.extra.length ? `
+    <div class="hsec"><span class="n">3</span>Spesa</div>
+    <a href="#/spesa" class="hshop">${ic('cart')}<span><b>${plan.length ? plan.length + (plan.length === 1 ? ' ricetta' : ' ricette') + ' · ' : ''}${toBuy} ${toBuy === 1 ? 'cosa' : 'cose'} da prendere</b><small>${esc(plan.map((p) => (S.recipes.find((r) => r.id === p.id) || {}).title).filter(Boolean).join(', ') || 'Voci aggiunte da te')}</small></span>${ic('right')}</a>` : ''}
+
+    <div class="hsec"><span class="n">${plan.length || d.extra.length ? 4 : 3}</span>Il tuo ricettario<a href="#/ricette" class="more">Tutte (${n})</a></div>
+    ${n ? `
+    <div class="chips">${[['recent', 'Recenti'], ['fav', 'Preferite'], ['cooked', 'Più cucinate']].map(([k, l]) => `<span class="chip ${(S.homeTab || 'recent') === k ? 'on' : ''}" data-act="home-tab" data-v="${k}">${l}</span>`).join('')}</div>
+    <div class="grid" id="hgrid"></div>` : `
+    <div class="card empty" style="padding:22px 14px">
+      <div style="color:var(--accent);margin-bottom:6px">${ic('pot').replace('<svg', '<svg style="width:44px;height:44px;margin:auto"')}</div>
+      <b style="color:var(--text)">Il tuo ricettario è vuoto</b>
+      <p class="small" style="margin:6px 0 0">Scrivi una ricetta tua, importala da un link o un video, oppure fatti dare un'idea qui sopra.</p>
+    </div>`}
+    <p class="homever"><button data-act="versions">In Cucina con Paolo v${APP_VERSION} · novità</button></p>`;
+  const hq = $('#hq');
+  hq.addEventListener('keydown', (e) => { if (e.key === 'Enter') { S.filter.q = hq.value; location.hash = '#/ricette'; } });
+  hq.addEventListener('search', () => { if (hq.value) { S.filter.q = hq.value; location.hash = '#/ricette'; } });
+  if (n) drawHomeGrid();
+}
+function drawHomeGrid() {
+  const el = $('#hgrid'); if (!el) return;
+  const t = S.homeTab || 'recent';
+  let list = S.recipes.slice();
+  if (t === 'fav') list = list.filter((r) => r.favorite);
+  if (t === 'cooked') list = list.filter((r) => r.log.length).sort((a, b) => b.log.length - a.log.length);
+  else list.sort((a, b) => b.updatedAt - a.updatedAt);
+  list = list.slice(0, 4);
+  el.innerHTML = list.length ? list.map(cardHtml).join('') : `<div class="empty small" style="grid-column:1/-1;padding:16px">${t === 'fav' ? 'Nessuna preferita: tocca la stella in una ricetta.' : 'Nessuna ricetta cucinata con "Inizia a cucinare" ancora.'}</div>`;
+}
+function renderBook(app) {
   const cats = [...new Set(S.recipes.map((r) => r.category))].sort((a, b) => CATEGORIES.indexOf(a) - CATEGORIES.indexOf(b));
   app.innerHTML = `
-    <div class="quick">
-      <a href="#/nuova">${ic('edit')}<b>Nuova ricetta</b><span>Scrivila tu, con foto</span></a>
-      <a href="#/importa">${ic('link')}<b>Da un link</b><span>Siti, YouTube, TikTok, Instagram</span></a>
-      <a href="#/frigo">${ic('fridge')}<b>Svuota frigo</b><span>Idee con quello che hai</span></a>
-      <a href="#/consigli" class="hl">${ic('chef')}<b>Cosa cucino?</b><span>Rispondi a qualche domanda, ti propongo ricette</span></a>
-    </div>
+    <div class="row" style="margin-top:16px;justify-content:space-between;flex-wrap:nowrap"><h1 style="margin:0">Ricettario</h1><a class="btn sm primary" href="#/nuova">${ic('plus')} Nuova</a></div>
     ${S.recipes.length ? `
-    <div class="search">${ic('search')}<input type="search" id="q" placeholder="Cerca per nome, ingrediente o tag" value="${esc(S.filter.q)}"></div>
+    <div class="search" style="margin-top:12px">${ic('search')}<input type="search" id="q" placeholder="Cerca per nome, ingrediente o tag" value="${esc(S.filter.q)}"></div>
     <div class="chips" style="margin-top:10px">
       <span class="chip ${S.filter.fav ? 'on' : ''}" data-act="flt-fav">${ic('starf')} Preferite</span>
       <span class="chip ${!S.filter.cat ? 'on' : ''}" data-act="flt-cat" data-v="">Tutte</span>
@@ -1954,15 +2056,12 @@ function renderHome(app) {
       </select>
     </div>
     <div class="grid" id="grid"></div>
-    <div id="shopbar"></div>
-    <p class="homever"><button data-act="versions">In Cucina con Paolo v${APP_VERSION} · novità</button></p>` : `
-    <div class="card empty" style="margin-top:6px">
+    <div id="shopbar"></div>` : `
+    <div class="card empty" style="margin-top:12px">
       <div style="color:var(--accent);margin-bottom:8px">${ic('pot').replace('<svg', '<svg style="width:56px;height:56px;margin:auto"')}</div>
       <h2 style="color:var(--text)">Il tuo ricettario è vuoto</h2>
-      <p>Inizia scrivendo una ricetta tua, incollando un link (anche di un video), oppure fatti dare un'idea da <b>Cosa cucino?</b> o da Svuota frigo.</p>
-      ${!AI.has() ? `<p class="small">Consiglio: inserisci prima la <a href="#/impostazioni">chiave AI gratuita</a>, serve per convertire video e post.</p>` : ''}
-    </div>
-    <p class="homever"><button data-act="versions">In Cucina con Paolo v${APP_VERSION} · novità</button></p>`}`;
+      <p>Scrivi una ricetta tua, <a href="#/importa">importala</a> da un link o un video, oppure fatti dare un'idea da <a href="#/consigli">Cosa cucino?</a> o <a href="#/scansiona">Scansiona</a>.</p>
+    </div>`}`;
   if (!S.recipes.length) return;
   $('#sort').value = S.filter.sort;
   $('#q').addEventListener('input', (e) => { S.filter.q = e.target.value; drawGrid(); });
@@ -2613,6 +2712,265 @@ function openShopPicker() {
 }
 
 /* =========================================================
+   SCANSIONA UN PRODOTTO
+   ========================================================= */
+const OFF_ALLERGENS = { gluten: 'glutine', crustaceans: 'crostacei', eggs: 'uova', fish: 'pesce', peanuts: 'arachidi', soybeans: 'soia', milk: 'latte', nuts: 'frutta a guscio', celery: 'sedano', mustard: 'senape', 'sesame-seeds': 'sesamo', 'sulphur-dioxide-and-sulphites': 'solfiti', lupin: 'lupini', molluscs: 'molluschi' };
+function offAllergens(tags) { return [...new Set((tags || []).map((t) => OFF_ALLERGENS[String(t).replace(/^\w\w:/, '')]).filter(Boolean))]; }
+let scanStream = null, scanTimer = null;
+function stopScan() {
+  clearTimeout(scanTimer); scanTimer = null;
+  if (scanStream) { scanStream.getTracks().forEach((t) => t.stop()); scanStream = null; }
+}
+function scanState() { if (!S.scan) S.scan = { product: null, ideas: [], seen: [], added: {}, busy: {}, carted: {}, people: defaultPeople(), notes: '' }; return S.scan; }
+function defaultPeople() { return +settings.get('default_people', 0) || +settings.get('fr_people', 0) || 4; }
+function renderScan(app) {
+  const sc = scanState();
+  if (sc.product) return drawScanResult(app);
+  const hasDetector = 'BarcodeDetector' in window;
+  app.innerHTML = `
+  <h1 style="margin-top:16px">Scansiona un prodotto</h1>
+  <p class="dim" style="margin-top:0">Inquadra il codice a barre: ti dico cosa cucinarci e cosa ti serve ancora.</p>
+  ${!AI.has() ? `<div class="notice" style="margin-bottom:12px"><b>Serve la chiave AI gratuita</b> per le ricette. <a href="#/impostazioni">Inseriscila qui</a>.</div>` : ''}
+  <div class="scanbox" id="scanBox">
+    <video id="scanVid" playsinline muted></video>
+    <div class="scanframe"><i></i></div>
+    <div class="scanmsg" id="scanMsg">${hasDetector ? 'Avvio la fotocamera…' : 'Questo browser non legge i codici dal vivo: usa la foto qui sotto.'}</div>
+    <button class="iconbtn scantorch hidden" id="scanTorch" data-act="scan-torch" aria-label="Torcia">${ic('bolt')}</button>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <label class="btn grow primary" style="position:relative;flex:1">${ic('camera')} Foto della confezione<input type="file" accept="image/*" capture="environment" id="scanPhoto" style="position:absolute;inset:0;opacity:0"></label>
+  </div>
+  <p class="small dim" style="margin:6px 2px 0">Se il codice non si legge, fotografa il davanti del pacchetto: l'AI riconosce il prodotto.</p>
+  <div class="card stack" style="margin-top:14px">
+    <div><label class="f">Oppure scrivi il codice a barre o il prodotto</label>
+    <div class="chipinput"><input type="text" id="scanManual" placeholder="8076809513753 o mezze maniche Barilla" enterkeyhint="go"><button class="btn sm" data-act="scan-manual">${ic('right')}</button></div></div>
+  </div>
+  <div id="scanErr"></div>`;
+  $('#scanPhoto').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) scanFromPhoto(f); });
+  $('#scanManual').addEventListener('keydown', (e) => { if (e.key === 'Enter') ACT['scan-manual'](); });
+  if (hasDetector) startScan(); else $('#scanBox').classList.add('off');
+}
+async function startScan() {
+  const msg = $('#scanMsg'); const vid = $('#scanVid');
+  try {
+    let formats = ['ean_13', 'ean_8', 'upc_a', 'upc_e'];
+    try { const sup = await BarcodeDetector.getSupportedFormats(); formats = formats.filter((f) => sup.includes(f)); if (!formats.length) formats = sup; } catch {}
+    const det = new BarcodeDetector({ formats });
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    if (!location.hash.startsWith('#/scansiona')) { stopScan(); return; }
+    vid.srcObject = scanStream; await vid.play();
+    msg.textContent = 'Inquadra il codice a barre';
+    const track = scanStream.getVideoTracks()[0];
+    try { if (track.getCapabilities && track.getCapabilities().torch) $('#scanTorch').classList.remove('hidden'); } catch {}
+    const loop = async () => {
+      if (!scanStream) return;
+      try {
+        const codes = await det.detect(vid);
+        const c = codes.find((x) => /^\d{8,14}$/.test(x.rawValue));
+        if (c) { if (navigator.vibrate) navigator.vibrate(80); stopScan(); return lookupBarcode(c.rawValue); }
+      } catch {}
+      scanTimer = setTimeout(loop, 220);
+    };
+    loop();
+  } catch (e) {
+    stopScan();
+    $('#scanBox').classList.add('off');
+    msg.textContent = e && e.name === 'NotAllowedError' ? 'Permesso fotocamera negato: abilitalo nelle impostazioni del sito, oppure usa la foto.' : 'Fotocamera non disponibile: usa la foto qui sotto.';
+  }
+}
+function scanErr(m) { const el = $('#scanErr'); if (el) el.innerHTML = `<div class="notice" style="margin-top:12px">${m}</div>`; else toast(m.replace(/<[^>]+>/g, ''), 5000); }
+function scanBusy(text) {
+  $('#app').innerHTML = `<h1 style="margin-top:16px">Scansiona un prodotto</h1><div class="card" style="display:flex;gap:12px;align-items:center;margin-top:10px"><span style="color:var(--accent)">${ic('refresh', 'spin').replace('<svg', '<svg style="width:22px;height:22px"')}</span><span>${esc(text)}</span></div>`;
+}
+async function offLookup(code) {
+  const fields = 'code,product_name,product_name_it,generic_name_it,generic_name,brands,quantity,categories_tags,categories,image_front_url,image_front_small_url,allergens_tags,traces_tags,ingredients_text_it,ingredients_text';
+  for (const host of ['https://world.openfoodfacts.org', 'https://it.openfoodfacts.org']) {
+    try {
+      const r = await fetchTimeout(host + '/api/v2/product/' + encodeURIComponent(code) + '.json?fields=' + fields, 12000);
+      if (!r.ok && r.status !== 404) continue;
+      const j = await r.json();
+      if (j && j.status === 1 && j.product) return j.product;
+      return null;
+    } catch {}
+  }
+  return null;
+}
+function productFromOff(p, code) {
+  const cats = (p.categories_tags || []).map((c) => c.replace(/^\w\w:/, '').replace(/-/g, ' '));
+  return {
+    code, source: 'off',
+    name: p.product_name_it || p.product_name || p.generic_name_it || p.generic_name || '',
+    brand: (p.brands || '').split(',')[0].trim(),
+    quantity: p.quantity || '',
+    type: p.generic_name_it || cats.slice(-2).join(', '),
+    categories: cats.slice(-4).join(', '),
+    image: p.image_front_url || p.image_front_small_url || '',
+    allergens: offAllergens(p.allergens_tags), traces: offAllergens(p.traces_tags),
+    ingredients: (p.ingredients_text_it || p.ingredients_text || '').slice(0, 600)
+  };
+}
+async function lookupBarcode(code) {
+  scanBusy('Cerco il prodotto ' + code + '…');
+  const p = await offLookup(code);
+  if (p && (p.product_name || p.product_name_it || p.generic_name)) { await showProduct(productFromOff(p, code)); return; }
+  // non nel database: se ho la chiave chiedo all'AI di riconoscerlo dal codice, altrimenti chiedo una foto
+  renderScan($('#app'));
+  scanErr(`<b>Prodotto ${esc(code)} non trovato</b> nel database aperto dei prodotti. Fotografa il davanti della confezione con <b>Foto della confezione</b>, oppure scrivi il nome del prodotto qui sopra.`);
+}
+const PRODUCT_RULES = `Riconosci il prodotto alimentare nella foto (fronte della confezione, etichetta o codice a barre). Rispondi SOLO con JSON:
+{"found": true, "name": "nome commerciale", "brand": "marca", "quantity": "500 g", "type": "che cos'è in parole semplici (es. pasta corta di semola tipo mezze maniche)", "barcode": "cifre del codice a barre se leggibili, altrimenti stringa vuota", "allergens": ["allergeni UE presenti, in italiano"]}
+Se non è un prodotto alimentare riconoscibile: {"found": false}`;
+async function scanFromPhoto(file) {
+  stopScan();
+  scanBusy('Leggo la foto…');
+  let code = '';
+  try { if ('BarcodeDetector' in window) { const bmp = await createImageBitmap(file); const r = await new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] }).detect(bmp); if (r[0]) code = r[0].rawValue; } } catch {}
+  if (code) return lookupBarcode(code);
+  if (!AI.has()) { renderScan($('#app')); scanErr('Nella foto non vedo un codice a barre. Per riconoscere il prodotto dalla confezione serve la <a href="#/impostazioni">chiave AI</a>.'); return; }
+  scanBusy('L\'AI riconosce il prodotto…');
+  try {
+    const img = await fileToPhoto(file, 1280);
+    const res = await AI.generate({ system: PRODUCT_RULES, parts: [{ inlineData: { mimeType: 'image/jpeg', data: img.split(',')[1] } }, { text: 'Che prodotto è?' }], temperature: 0.1 });
+    const d = res.data || {};
+    if (!d.found || !d.name) throw new Error('Non riconosco un prodotto alimentare in questa foto. Prova a inquadrare meglio il davanti della confezione.');
+    if (d.barcode && /^\d{8,14}$/.test(String(d.barcode).replace(/\s/g, ''))) {
+      const p = await offLookup(String(d.barcode).replace(/\s/g, ''));
+      if (p && (p.product_name || p.product_name_it)) { const pr = productFromOff(p, d.barcode); pr.image = pr.image || img; return showProduct(pr); }
+    }
+    await showProduct({ code: '', source: 'foto', name: d.name, brand: d.brand || '', quantity: d.quantity || '', type: d.type || '', categories: '', image: img, allergens: Array.isArray(d.allergens) ? d.allergens.map((x) => String(x).toLowerCase()) : [], traces: [], ingredients: '' });
+  } catch (e) { renderScan($('#app')); scanErr('<b>Non ci sono riuscito.</b> ' + esc(e.message)); }
+}
+async function scanManual(v) {
+  v = v.trim(); if (!v) return;
+  stopScan();
+  if (/^\d{8,14}$/.test(v.replace(/\s/g, ''))) return lookupBarcode(v.replace(/\s/g, ''));
+  await showProduct({ code: '', source: 'testo', name: v, brand: '', quantity: '', type: '', categories: '', image: '', allergens: detectAllergensText(v), traces: [], ingredients: '' });
+}
+function detectAllergensText(t) { const s = ' ' + normTxt(t) + ' '; return ALLERGENS.filter(([, rx]) => rx.test(s)).map(([k]) => k); }
+function productLabel(p) { return [p.brand && !normTxt(p.name).includes(normTxt(p.brand)) ? p.brand : '', p.name, p.quantity ? '(' + p.quantity + ')' : ''].filter(Boolean).join(' '); }
+function productWords(p) {
+  const stop = new Set(['di', 'della', 'del', 'con', 'per', 'alla', 'al', 'e', 'la', 'il', 'le', 'gli', 'i', 'n', 'bio', 'gr', 'kg', 'ml']);
+  const brand = new Set(normTxt(p.brand).split(' '));
+  return [...new Set(normTxt([p.name, p.type].join(' ')).split(' ').filter((w) => w.length > 2 && !stop.has(w) && !brand.has(w) && !/^\d/.test(w)))];
+}
+function bookMatches(p) {
+  const words = productWords(p); if (!words.length) return [];
+  return S.recipes.map((r) => {
+    const names = allIngredients(r).map((i) => normTxt(i.name));
+    let score = 0; names.forEach((n) => words.forEach((w) => { if (n.split(' ').some((x) => x.startsWith(w.slice(0, Math.max(4, w.length - 2))))) score++; }));
+    return { r, score };
+  }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 6).map((x) => x.r);
+}
+async function showProduct(p) {
+  const sc = scanState();
+  sc.product = p; sc.ideas = []; sc.seen = []; sc.added = {}; sc.busy = {}; sc.carted = {}; sc.error = '';
+  const hist = settings.get('scan_hist', []).filter((x) => x.name !== p.name); hist.unshift({ name: p.name, brand: p.brand, code: p.code, t: Date.now() }); settings.set('scan_hist', hist.slice(0, 8));
+  drawScanResult($('#app'));
+  if (AI.has()) scanIdeas(false);
+}
+const SCAN_RULES = `Sei uno chef italiano esperto. Qualcuno è al supermercato con in mano un prodotto e vuole sapere cosa cucinarci. Proponi ricette REALI e collaudate in cui quel prodotto è protagonista, adatte proprio al suo formato/tipo (es. per una pasta corta rigata sughi corposi, per gli spaghetti sughi che avvolgono). Considera la quantità della confezione. Varia le proposte.
+Per ognuna elenca in "toBuy" SOLO gli ingredienti da comprare, con dose per il numero di persone indicato: escludi il prodotto stesso e la dispensa che la persona ha già.
+Rispondi SOLO con JSON:
+{"ideas":[{"title":"","course":"primo|secondo|contorno|dolce|antipasto|piatto unico","description":"1 frase invitante","minutes":30,"difficulty":"facile|media|impegnativa","productQty":"quanto prodotto usa, es. 320 g","why":"perché è perfetta per questo prodotto","toBuy":[{"name":"guanciale","qty":150,"unit":"g"}],"pantry":["ingredienti di dispensa usati"]}]}`;
+async function scanIdeas(more) {
+  const sc = scanState(); const p = sc.product; if (!p) return;
+  if (more) sc.seen = sc.seen.concat(sc.ideas.map((x) => x.title));
+  sc.loading = true; sc.error = ''; drawScanResult($('#app'));
+  const pantry = settings.get('fr_usePantry', true) ? settings.get('fr_pantry', PANTRY_DEFAULT) : [];
+  const text = [
+    'Prodotto: ' + productLabel(p) + (p.type ? ' — ' + p.type : '') + (p.categories ? ' — categorie: ' + p.categories : ''),
+    p.ingredients ? 'Ingredienti del prodotto: ' + p.ingredients : '',
+    'Persone: ' + sc.people,
+    'Dispensa che ha già in casa: ' + (pantry.join(', ') || 'niente di particolare'),
+    sc.notes ? 'Richieste: ' + sc.notes : '',
+    'Mese: ' + new Date().toLocaleDateString('it-IT', { month: 'long' }) + ' (ingredienti di stagione)',
+    sc.seen.length ? 'NON riproporre: ' + sc.seen.join('; ') : '',
+    'Proponi 5 ricette.'
+  ].filter(Boolean).join('\n');
+  try {
+    const res = await AI.generate({ system: SCAN_RULES, parts: [{ text }], temperature: 0.9 });
+    sc.ideas = pickList(res.data, ['ideas', 'idee', 'ricette', 'recipes']).map(normIdea).filter(Boolean).map((x) => Object.assign(x, { toBuy: Array.isArray(x.toBuy) ? x.toBuy.filter((t) => t && t.name) : [] }));
+    if (!sc.ideas.length) throw new Error('Nessuna proposta, riprova.');
+  } catch (e) { sc.error = e.message; }
+  sc.loading = false;
+  if (location.hash.startsWith('#/scansiona')) drawScanResult($('#app'));
+}
+function toBuyLine(t) { const q = num(t.qty); return [q != null ? fmtQty(q, t.unit) : '', t.unit && !(t.unit === 'pz' && q != null) ? unitLabel(t.unit, q) : '', t.name].filter(Boolean).join(' '); }
+function drawScanResult(app) {
+  const sc = scanState(); const p = sc.product;
+  setMastAction(`<button class="iconbtn" data-act="scan-new" aria-label="Nuova scansione">${ic('barcode')}</button>`);
+  const mine = bookMatches(p);
+  app.innerHTML = `
+  <div class="prod">
+    ${p.image ? `<img src="${esc(safeImg(p.image))}" alt="">` : `<span class="ph0">${ic('barcode')}</span>`}
+    <div><div class="small dim">${esc(p.source === 'off' ? 'Dal codice ' + p.code : p.source === 'foto' ? 'Riconosciuto dalla foto' : 'Prodotto scritto')}</div>
+      <h2 style="margin:2px 0 2px">${esc(p.name)}</h2>
+      <div class="small">${esc([p.brand, p.quantity].filter(Boolean).join(' · '))}</div>
+      ${p.allergens.length || p.traces.length ? `<div class="chips" style="margin-top:6px">${p.allergens.map((a) => `<span class="chip al-yes">${esc(a)}</span>`).join('')}${p.traces.filter((t) => !p.allergens.includes(t)).map((a) => `<span class="chip al-tr">tracce: ${esc(a)}</span>`).join('')}</div>` : ''}
+    </div>
+  </div>
+  <button class="btn block ghost" style="margin-top:10px" data-act="scan-new">${ic('barcode')} Scansiona un altro prodotto</button>
+
+  ${mine.length ? `<div class="hsec"><span class="n">${ic('book').replace('<svg', '<svg style="width:14px;height:14px"')}</span>Già nel tuo ricettario</div>
+  <div class="card">${mine.map((r) => `<div class="shop-rec"><a class="shop-rt" href="#/r/${encodeURIComponent(r.id)}">${r.photo ? `<img src="${esc(r.photo)}" alt="">` : `<span class="ph0">${ic('pot')}</span>`}<b>${esc(r.title)}</b></a>
+    <button class="btn sm ${Shop.has(r.id) ? '' : 'primary'}" data-act="scan-plan" data-id="${r.id}">${ic('cart')} ${Shop.has(r.id) ? 'In lista' : 'In spesa'}</button></div>`).join('')}</div>` : ''}
+
+  <div class="hsec"><span class="n">${ic('sparkle').replace('<svg', '<svg style="width:14px;height:14px"')}</span>Cosa puoi cucinarci</div>
+  <div class="row" style="margin-bottom:10px;flex-wrap:nowrap"><span class="grow small" style="font-weight:600">Per quante persone?</span>
+    <div class="servings sm"><button class="iconbtn sm" data-act="scan-ppl" data-d="-1">−</button><span class="v">${sc.people}</span><button class="iconbtn sm" data-act="scan-ppl" data-d="1">+</button></div></div>
+  ${!AI.has() ? `<div class="notice">Per le proposte serve la <a href="#/impostazioni">chiave AI gratuita</a>.</div>` : ''}
+  ${sc.loading ? `<div class="card" style="display:flex;gap:12px;align-items:center"><span style="color:var(--accent)">${ic('refresh', 'spin').replace('<svg', '<svg style="width:22px;height:22px"')}</span> Penso a cosa cucinarci…</div>` : ''}
+  ${sc.error ? `<div class="notice"><b>Non ci sono riuscito.</b> ${esc(sc.error)} <button class="btn sm" data-act="scan-retry">Riprova</button></div>` : ''}
+  ${!sc.loading && sc.ideas.length ? `<div class="stack">${sc.ideas.map((d, i) => {
+    const added = sc.added[d.title]; const busy = sc.busy[d.title]; const carted = sc.carted[d.title];
+    return `<div class="idea">
+      <div class="row" style="align-items:flex-start;flex-wrap:nowrap">
+        <div style="flex:1"><div class="small" style="color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-family:'Space Grotesk',system-ui,sans-serif">${esc(d.course || '')}</div><h3>${esc(d.title)}</h3></div>
+        ${added ? `<a class="addbtn ok" href="#/r/${encodeURIComponent(added)}" aria-label="Apri nel ricettario">${ic('check')}</a>` : `<button class="addbtn" data-act="scan-add" data-i="${i}" ${busy ? 'disabled' : ''} aria-label="Aggiungi al ricettario">${busy ? ic('refresh', 'spin') : ic('plus')}</button>`}
+      </div>
+      <div class="dim small">${[d.minutes ? fmtMin(d.minutes) : '', d.difficulty, d.productQty ? 'usa ' + d.productQty : ''].filter(Boolean).map(esc).join(' · ')}</div>
+      ${d.description ? `<p style="margin:6px 0 0">${esc(d.description)}</p>` : ''}
+      ${d.why ? `<div class="why">${esc(d.why)}</div>` : ''}
+      <div class="tobuy"><b>${d.toBuy.length ? 'Ti serve ancora:' : 'Hai già tutto il resto ✓'}</b>${d.toBuy.length ? `<ul>${d.toBuy.map((t) => `<li>${esc(toBuyLine(t))}</li>`).join('')}</ul>` : ''}${d.pantry && d.pantry.length ? `<div class="small dim">Dalla dispensa: ${esc(d.pantry.join(', '))}</div>` : ''}</div>
+      <div class="links">
+        ${d.toBuy.length ? `<button class="btn sm ${carted ? '' : 'primary'}" data-act="scan-cart" data-i="${i}" ${carted ? 'disabled' : ''}>${ic(carted ? 'check' : 'cart')} ${carted ? 'Nella lista della spesa' : 'Metti in lista della spesa'}</button>` : ''}
+        ${added ? `<a class="btn sm" href="#/r/${encodeURIComponent(added)}">Apri la ricetta</a>` : ''}
+      </div>
+      ${busy ? `<div class="small dim" style="margin-top:8px">Scrivo la ricetta completa e la salvo…</div>` : ''}
+    </div>`; }).join('')}</div>
+    <p class="small dim" style="margin-top:10px"><b>+</b> salva la ricetta completa nel ricettario, per ${sc.people} persone. <b>Metti in lista</b> aggiunge alla spesa solo quello che ti manca.</p>
+    <button class="btn block" style="margin-top:8px" data-act="scan-more">${ic('refresh')} Altre idee</button>` : ''}`;
+}
+function safeImg(u) { return /^(https?:|data:image\/)/.test(String(u || '')) ? u : ''; }
+async function scanAdd(i) {
+  const sc = scanState(); const d = sc.ideas[i]; const p = sc.product; if (!d || sc.busy[d.title] || sc.added[d.title]) return;
+  sc.busy[d.title] = true; drawScanResult($('#app'));
+  try {
+    const text = `Scrivi la ricetta completa di "${d.title}" (${d.course || ''}: ${d.description || ''}).
+Il prodotto protagonista è: ${productLabel(p)}${p.type ? ' — ' + p.type : ''}${d.productQty ? '; usane ' + d.productQty : ''}.
+Usa la versione classica e collaudata del piatto. "servings" deve essere ${sc.people}.`;
+    const res = await AI.generate({ system: RECIPE_RULES, parts: [{ text }], temperature: 0.4 });
+    if (!res.data || res.data.notARecipe) throw new Error('Non sono riuscito a scrivere la ricetta, riprova.');
+    const r = fromAiRecipe(res.data, { source: { type: 'scan', url: '' } });
+    r.warnings = []; r.tags = [...new Set(r.tags.concat([p.name.split(' ').slice(0, 2).join(' ').toLowerCase()]))];
+    if (p.image && /^data:/.test(p.image)) r.photo = '';
+    await DB.put(r); await loadRecipes();
+    sc.added[d.title] = r.id; toast('Aggiunta al ricettario ✓');
+    if (settings.get('auto_nutri', true)) ensureNutrition(r.id);
+  } catch (e) { toast(e.message, 4500); }
+  delete sc.busy[d.title];
+  if (location.hash.startsWith('#/scansiona')) drawScanResult($('#app'));
+}
+function scanCart(i) {
+  const sc = scanState(); const d = sc.ideas[i]; if (!d) return;
+  const shop = Shop.get();
+  d.toBuy.forEach((t) => { const line = toBuyLine(t) + ' — per ' + d.title; if (!shop.extra.some((x) => x.text === line)) shop.extra.push({ text: line, done: false }); });
+  Shop.save(shop); sc.carted[d.title] = true;
+  toastAction(d.toBuy.length + (d.toBuy.length === 1 ? ' cosa aggiunta' : ' cose aggiunte') + ' alla lista della spesa', 'Vai', () => { location.hash = '#/spesa'; });
+  drawScanResult($('#app'));
+}
+
+/* =========================================================
    COSA CUCINO? (domande → proposte → + al ricettario)
    ========================================================= */
 const WZ_COURSES = ['antipasto', 'primo', 'secondo', 'contorno', 'piatto unico', 'dolce', 'aperitivo / finger food', 'menù completo'];
@@ -3071,7 +3429,16 @@ const ACT = {
   'go-back': () => { if (history.length > 1) history.back(); else location.hash = '#/'; },
   'modal-close': () => closeModal(),
   'versions': () => openVersions(),
-  'card-cart': (a) => { const on = Shop.toggle(a.dataset.id); toast(on ? 'Aggiunta alla lista della spesa' : 'Tolta dalla lista della spesa'); drawGrid(); },
+  'scan-manual': () => { const v = $('#scanManual'); if (v) scanManual(v.value); },
+  'scan-new': () => { S.scan = null; stopScan(); if (location.hash === '#/scansiona') renderScan($('#app')); else location.hash = '#/scansiona'; },
+  'scan-torch': async (a) => { try { const t = scanStream && scanStream.getVideoTracks()[0]; const on = !a.classList.contains('on'); await t.applyConstraints({ advanced: [{ torch: on }] }); a.classList.toggle('on', on); } catch {} },
+  'scan-ppl': (a) => { const sc = scanState(); sc.people = Math.max(1, Math.min(30, sc.people + +a.dataset.d)); a.parentElement.querySelector('.v').textContent = sc.people; clearTimeout(sc.pplT); sc.pplT = setTimeout(() => { if (sc.ideas.length) scanIdeas(false); }, 900); },
+  'scan-more': () => scanIdeas(true),
+  'scan-retry': () => scanIdeas(false),
+  'scan-add': (a) => scanAdd(+a.dataset.i),
+  'scan-cart': (a) => scanCart(+a.dataset.i),
+  'scan-plan': (a) => { const r = S.recipes.find((x) => x.id === a.dataset.id); if (!r) return; if (Shop.has(r.id)) { location.hash = '#/spesa'; return; } Shop.add(r.id, scanState().people); toastAction('In lista della spesa per ' + scanState().people + ' persone', 'Vai', () => { location.hash = '#/spesa'; }); drawScanResult($('#app')); },
+  'card-cart': (a) => { const on = Shop.toggle(a.dataset.id); toast(on ? 'Aggiunta alla lista della spesa' : 'Tolta dalla lista della spesa'); if ($('#grid')) drawGrid(); else renderHome($('#app')); },
   'r-cart': (a) => {
     const r = S.recipes.find((x) => x.id === a.dataset.id); if (!r) return;
     const v = S.view[r.id];
@@ -3091,7 +3458,7 @@ const ACT = {
   'shop-copy': async () => { try { await navigator.clipboard.writeText(shopText()); toast('Lista copiata ✓'); } catch { toast('Copia non riuscita'); } },
   'shop-clear': async () => { if (!(await confirmBox('Svuotare la lista della spesa (ricette, spunte e voci aggiunte)?', 'Svuota', true))) return; Shop.save({ plan: [], checked: {}, extra: [], hideDone: false }); shopRedraw(); },
   'card-edit': (a) => { location.hash = '#/modifica/' + encodeURIComponent(a.dataset.id); },
-  'card-del': async (a) => { const r = S.recipes.find((x) => x.id === a.dataset.id); if (!r || !(await confirmBox('Eliminare "' + r.title + '"? Non si può annullare.', 'Elimina', true))) return; await DB.del(r.id); Shop.remove(r.id); await loadRecipes(); toast('Ricetta eliminata'); renderHome($('#app')); },
+  'card-del': async (a) => { const r = S.recipes.find((x) => x.id === a.dataset.id); if (!r || !(await confirmBox('Eliminare "' + r.title + '"? Non si può annullare.', 'Elimina', true))) return; await DB.del(r.id); Shop.remove(r.id); await loadRecipes(); toast('Ricetta eliminata'); if (location.hash.startsWith('#/ricette')) renderBook($('#app')); else renderHome($('#app')); },
   'wz-tog': (a) => { const w = wzState(); const k = a.dataset.k, v = a.dataset.v; w[k] = w[k].includes(v) ? w[k].filter((x) => x !== v) : w[k].concat(v); a.classList.toggle('on'); },
   'wz-one': (a) => { const w = wzState(); w[a.dataset.k] = w[a.dataset.k] === a.dataset.v ? '' : a.dataset.v; $$(`[data-act="wz-one"][data-k="${a.dataset.k}"]`).forEach((b) => b.classList.toggle('on', b === a && w[a.dataset.k] === a.dataset.v)); },
   'wz-set': (a) => { const w = wzState(); w[a.dataset.k] = isNaN(+a.dataset.v) ? a.dataset.v : +a.dataset.v; $$(`[data-act="wz-set"][data-k="${a.dataset.k}"]`).forEach((b) => b.classList.toggle('on', b === a)); },
@@ -3111,8 +3478,9 @@ const ACT = {
   'timer': (a) => Timers.add(a.dataset.label || 'Timer', +a.dataset.min),
   'timer-stop': (a) => Timers.remove(a.dataset.id),
   // home
-  'flt-fav': () => { S.filter.fav = !S.filter.fav; renderHome($('#app')); },
-  'flt-cat': (a) => { S.filter.cat = a.dataset.v; renderHome($('#app')); },
+  'flt-fav': () => { S.filter.fav = !S.filter.fav; renderBook($('#app')); },
+  'flt-cat': (a) => { S.filter.cat = a.dataset.v; renderBook($('#app')); },
+  'home-tab': (a) => { S.homeTab = a.dataset.v; $$('[data-act="home-tab"]').forEach((b) => b.classList.toggle('on', b === a)); drawHomeGrid(); },
   // vista ricetta
   'serv': (a) => { const v = S.view[a.dataset.id]; v.servings = Math.max(1, Math.min(200, Math.round(v.servings || 1) + +a.dataset.d)); rerenderRecipe(a.dataset.id); },
   'serv-reset': (a) => { const r = S.recipes.find((x) => x.id === a.dataset.id) || S.draft; S.view[a.dataset.id].servings = r.servings.amount; rerenderRecipe(a.dataset.id); },

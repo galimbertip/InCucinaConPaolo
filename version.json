@@ -1,11 +1,10 @@
 {
-  "version": "1.8.0",
-  "date": "28 ottobre 2026",
+  "version": "1.9.0",
+  "date": "12 novembre 2026",
   "items": [
-    "YouTube: oltre a guardare il video l'AI legge titolo e descrizione, usando le dosi scritte lì; se il video non si può analizzare la ricetta viene ricavata dalla descrizione. Video lunghi analizzati più in fretta e senza interruzioni a metà.",
-    "Instagram: la didascalia completa ora si legge anche senza accesso (dalla versione pubblica del post).",
-    "TikTok: funzionano anche i link brevi condivisi dall'app (vm.tiktok.com) e la descrizione viene letta anche dai dati della pagina.",
-    "Nuova scheda \"Video\" in Importa: carichi un reel o un TikTok salvato sul telefono, l'AI lo guarda, scrive la ricetta e prende le foto dei passaggi dai fotogrammi.",
-    "Se un post non contiene la ricetta scritta, l'app non la inventa più e ti propone subito \"Video\", \"Foto\" o \"Testo\". Anche il testo condiviso insieme al link viene usato."
+    "Nuova funzione Scansiona: inquadri il codice a barre di un prodotto al supermercato (o fotografi la confezione) e ti propongo ricette fatte apposta per quel prodotto, con l'elenco di cosa ti serve ancora e il pulsante per metterlo nella lista della spesa.",
+    "Dati del prodotto (nome, formato, allergeni) presi dal database aperto Open Food Facts; ricette del tuo ricettario che lo usano già in cima.",
+    "Home ridisegnata per sezioni: Trova un'idea, Aggiungi al ricettario, Spesa (con lo stato della lista) e un'anteprima del ricettario.",
+    "Nuova barra in basso: Home, Ricettario, Scansiona al centro, Spesa (con il numero di ricette) e Altro. Il ricettario completo ha ora una pagina sua."
   ]
 }
