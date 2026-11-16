@@ -3,6 +3,10 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.10.0 — 17 novembre 2026
+    - Cosa cucino?: dettagli per portata con sotto-domande (WZ_DETAILS),
+      passaggio Cottura, salto rapido alle proposte.
+
   v1.9.0 — 12 novembre 2026
     - Scansiona: BarcodeDetector + Open Food Facts, foto confezione con AI,
       ricette per il prodotto, mancanti in lista spesa.
@@ -448,6 +452,12 @@ table.nutri tr.sub td:first-child{padding-left:18px;color:var(--dim)}
 .wz-dots span.on{background:linear-gradient(135deg,var(--accent),var(--violet));color:var(--on-accent);border-color:transparent}
 .wz-dots span.done{color:var(--accent);border-color:var(--accent)}
 .wz-card h2{margin-bottom:4px}
+.wz-course{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--bg)}
+.wz-course+.wz-course{margin-top:12px}
+.wz-ch{font-family:"Space Grotesk",system-ui,sans-serif;font-weight:700;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.wz-q+.wz-q{margin-top:12px}
+.wz-q h3{margin:0 0 6px;font-size:.95rem}
+.wz-q.sub{margin-left:10px;padding-left:10px;border-left:3px solid var(--accent)}
 .chips.big .chip{padding:10px 15px;font-size:.95rem}
 .addbtn{width:46px;height:46px;border-radius:14px;border:0;flex:none;display:grid;place-items:center;cursor:pointer;background:linear-gradient(135deg,var(--accent),var(--violet));color:var(--on-accent);box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 35%,transparent)}
 .addbtn svg{width:24px;height:24px}
@@ -579,8 +589,14 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.10.0';
 const CHANGELOG = [
+  { v: '1.10.0', d: '17 novembre 2026', items: [
+    '"Cosa cucino?" fa domande diverse in base alla portata: per un primo chiede la base (pasta lunga o corta, riso, gnocchi, zuppe…) e il condimento (verdure, pesce, carne rossa o bianca…), per un secondo il protagonista e come cucinarlo, per un dolce che tipo (torta, biscotti, al cucchiaio…) e che gusto.',
+    'Le risposte aprono sotto-domande: scegli "pesce" e ti chiede che pesce, scegli "torta" e ti chiede che torta, scegli "carne rossa" e ti chiede il taglio.',
+    'Nuovo passaggio Cottura: forno, fornelli, friggitrice ad aria, microonde, griglia, Bimby, pentola a pressione, vapore o senza cottura, come preferenza o come vincolo.',
+    'Link "Proponi ora" in alto per saltare i passaggi che non ti interessano.'
+  ]},
   { v: '1.9.0', d: '12 novembre 2026', items: [
     'Nuova funzione Scansiona: inquadri il codice a barre di un prodotto al supermercato (o fotografi la confezione) e ti propongo ricette fatte apposta per quel prodotto, con l\'elenco di cosa ti serve ancora e il pulsante per metterlo nella lista della spesa.',
     'Dati del prodotto (nome, formato, allergeni) presi dal database aperto Open Food Facts; ricette del tuo ricettario che lo usano già in cima.',
@@ -2975,36 +2991,116 @@ function scanCart(i) {
    ========================================================= */
 const WZ_COURSES = ['antipasto', 'primo', 'secondo', 'contorno', 'piatto unico', 'dolce', 'aperitivo / finger food', 'menù completo'];
 const WZ_EVENTS = ['pranzo normale', 'cena veloce', 'cena con amici', 'compleanno', 'Natale', 'Capodanno', 'Pasqua', 'cena romantica', 'festa per bambini', 'grigliata', 'pic-nic / gita', 'brunch', 'pranzo di lavoro (da portare)'];
-const WZ_WISHES = ['leggero', 'comfort food', 'tradizionale italiano', 'regionale', 'creativo', 'economico', 'si prepara in anticipo', 'senza forno', 'pochi ingredienti', 'di stagione', 'scenografico'];
+const WZ_WISHES = ['leggero', 'comfort food', 'tradizionale italiano', 'regionale', 'creativo', 'economico', 'si prepara in anticipo', 'pochi ingredienti', 'di stagione', 'scenografico'];
+/* Domande che cambiano in base alla portata scelta: ogni opzione può aprire una sotto-domanda (then) */
+const WZ_FISH = ['pesce azzurro (alici, sgombro, sarde)', 'pesce bianco (orata, branzino, merluzzo)', 'salmone', 'tonno / pesce spada', 'baccalà'];
+const WZ_SEAFOOD = ['gamberi e scampi', 'cozze e vongole', 'calamari e seppie', 'polpo'];
+const WZ_DETAILS = {
+  primo: [
+    { k: 'base', q: 'Su cosa lo vuoi?', opts: ['pasta lunga', 'pasta corta', 'pasta fresca all\'uovo', 'pasta ripiena', 'gnocchi', 'riso / risotto', 'lasagne e pasta al forno', 'zuppe e minestre', 'cereali (farro, orzo)', 'senza glutine'] },
+    { k: 'cond', q: 'Con che condimento?', opts: ['verdure', 'pesce', 'crostacei e molluschi', 'carne rossa', 'carne bianca', 'salumi', 'formaggi', 'al pomodoro', 'in bianco'], then: {
+      'verdure': { k: 'verd', q: 'Che verdure?', opts: ['di stagione', 'funghi', 'zucca', 'zucchine', 'melanzane', 'carciofi', 'asparagi', 'broccoli / cime di rapa', 'legumi'] },
+      'pesce': { k: 'pesce', q: 'Che pesce?', opts: WZ_FISH },
+      'crostacei e molluschi': { k: 'mare', q: 'Quali?', opts: WZ_SEAFOOD },
+      'carne rossa': { k: 'rossa', q: 'Che carne?', opts: ['ragù di manzo', 'maiale', 'salsiccia', 'agnello', 'selvaggina (cinghiale, lepre)'] },
+      'carne bianca': { k: 'bianca', q: 'Che carne?', opts: ['pollo', 'tacchino', 'coniglio', 'anatra'] } } }
+  ],
+  secondo: [
+    { k: 'main', q: 'Chi è il protagonista?', opts: ['carne rossa', 'carne bianca', 'maiale', 'pesce', 'crostacei e molluschi', 'uova', 'formaggi', 'legumi / vegetariano', 'vegano'], then: {
+      'carne rossa': { k: 'rossa', q: 'Che taglio?', opts: ['bistecca / tagliata', 'arrosto', 'spezzatino / brasato', 'macinato (polpette, hamburger)', 'fettine / scaloppine', 'agnello'] },
+      'carne bianca': { k: 'bianca', q: 'Che carne?', opts: ['petto di pollo', 'pollo intero / cosce', 'tacchino', 'coniglio', 'anatra'] },
+      'maiale': { k: 'maiale', q: 'Che taglio?', opts: ['lonza / arista', 'filetto', 'costine', 'salsiccia', 'stinco'] },
+      'pesce': { k: 'pesce', q: 'Che pesce?', opts: WZ_FISH.concat(['pesce intero', 'filetti']) },
+      'crostacei e molluschi': { k: 'mare', q: 'Quali?', opts: WZ_SEAFOOD },
+      'legumi / vegetariano': { k: 'veg', q: 'Con cosa?', opts: ['ceci', 'lenticchie', 'fagioli', 'verdure ripiene', 'tofu / tempeh', 'seitan'] } } },
+    { k: 'stile', q: 'Come lo preferisci?', opts: ['arrosto', 'in umido / brasato', 'alla griglia', 'impanato / fritto', 'al cartoccio', 'in padella', 'polpette / hamburger', 'crudo / tartare'] }
+  ],
+  contorno: [
+    { k: 'tipo', q: 'Che contorno?', opts: ['verdure al forno', 'verdure in padella', 'verdure grigliate', 'insalata', 'patate', 'purè', 'legumi', 'sformati / gratin', 'verdure crude / pinzimonio'] }
+  ],
+  antipasto: [
+    { k: 'tipo', q: 'Che antipasto?', opts: ['freddo', 'caldo', 'crostini e bruschette', 'torte salate', 'di pesce', 'di carne / salumi', 'di verdure', 'formaggi', 'fritti sfiziosi'], then: {
+      'di pesce': { k: 'pesce', q: 'Che pesce?', opts: WZ_FISH.concat(WZ_SEAFOOD) } } }
+  ],
+  'piatto unico': [
+    { k: 'tipo', q: 'Che piatto unico?', opts: ['pizza / focaccia', 'torta salata', 'insalatona', 'bowl / poke', 'al forno', 'zuppa sostanziosa', 'piadine / panini', 'frittata / uova', 'legumi e cereali'] }
+  ],
+  dolce: [
+    { k: 'tipo', q: 'Che dolce?', opts: ['torta', 'crostata', 'biscotti', 'dolce al cucchiaio', 'semifreddo / gelato', 'lievitati (brioche, ciambelle)', 'fritti (frittelle, chiacchiere)', 'monoporzioni (muffin, cupcake)', 'cheesecake', 'pasticceria (bignè, sfogliatine)'], then: {
+      'torta': { k: 'torta', q: 'Che torta?', opts: ['soffice da colazione', 'farcita / di compleanno', 'alla frutta', 'al cioccolato', 'rustica della nonna', 'senza burro', 'integrale / leggera'] },
+      'dolce al cucchiaio': { k: 'cucchiaio', q: 'Quale?', opts: ['tiramisù e simili', 'panna cotta', 'budino', 'mousse', 'crema / zuppa inglese', 'trifle / bicchierini'] },
+      'biscotti': { k: 'biscotti', q: 'Che biscotti?', opts: ['da inzuppo', 'frollini', 'secchi (cantucci)', 'al burro', 'senza burro / leggeri', 'da regalare'] } } },
+    { k: 'gusto', q: 'Che gusto?', opts: ['cioccolato', 'frutta', 'crema / vaniglia', 'caffè', 'frutta secca', 'agrumi', 'mascarpone / ricotta', 'leggero'] }
+  ],
+  'aperitivo / finger food': [
+    { k: 'tipo', q: 'Che aperitivo?', opts: ['finger food freddi', 'fritti', 'crudi / tartare', 'salse da intingere', 'spiedini', 'mini panini / tramezzini', 'sfoglie e salatini', 'tagliere'] }
+  ],
+  'menù completo': [
+    { k: 'filo', q: 'Che filo conduttore?', opts: ['di carne', 'di pesce', 'vegetariano', 'misto', 'tradizionale / regionale', 'delle feste'] }
+  ]
+};
+const WZ_COOK = ['forno', 'fornelli', 'friggitrice ad aria', 'microonde', 'griglia / barbecue', 'Bimby / robot da cucina', 'pentola a pressione', 'cottura lenta', 'al vapore', 'senza cottura'];
+const WZ_STEP_LABEL = { piatto: 'Che piatto', dettagli: 'Dettagli', occasione: 'Occasione', cottura: 'Cottura', tempo: 'Persone e tempo', richieste: 'Richieste', salute: 'Salute e allergie' };
 function wzState() {
-  if (!S.wz) S.wz = { step: 0, courses: [], event: '', eventOther: '', people: settings.get('fr_people', 4), time: 60, difficulty: 'qualsiasi', wishes: [], notes: '', needs: Object.assign({}, NEEDS_DEFAULT, { allergie: [] }), count: 5, ideas: [], seen: [], added: {}, busy: {} };
+  if (!S.wz) S.wz = { step: 0, results: false, courses: [], det: {}, event: '', eventOther: '', cook: [], cookStrict: false, people: settings.get('fr_people', 4), time: 60, difficulty: 'qualsiasi', wishes: [], notes: '', needs: Object.assign({}, NEEDS_DEFAULT, { allergie: [] }), count: 5, ideas: [], seen: [], added: {}, busy: {} };
   return S.wz;
 }
-const WZ_STEPS = ['Che piatto', 'Occasione', 'Persone e tempo', 'Richieste', 'Salute e allergie'];
+function wzSteps(w) { return ['piatto'].concat(w.courses.some((c) => WZ_DETAILS[c]) ? ['dettagli'] : [], ['occasione', 'cottura', 'tempo', 'richieste', 'salute']); }
+function wzDet(w, c) { return (w.det[c] = w.det[c] || {}); }
+/* domande visibili per una portata, comprese le sotto-domande aperte dalle risposte */
+function wzQuestions(w, c) {
+  const out = []; const d = wzDet(w, c);
+  (WZ_DETAILS[c] || []).forEach((q) => {
+    out.push(q);
+    if (q.then) Object.entries(q.then).forEach(([opt, sub]) => { if ((d[q.k] || []).includes(opt)) out.push(Object.assign({ sub: true, parent: opt }, sub)); });
+  });
+  return out;
+}
+function wzDetailText(w) {
+  return w.courses.filter((c) => WZ_DETAILS[c]).map((c) => {
+    const d = wzDet(w, c);
+    const parts = wzQuestions(w, c).map((q) => (d[q.k] || []).length ? q.q.replace(/\?$/, '').toLowerCase() + ': ' + d[q.k].join(', ') : '').filter(Boolean);
+    return parts.length ? cap(c) + ' — ' + parts.join('; ') : '';
+  }).filter(Boolean);
+}
+function wzCookText(w) { return w.cook.length ? (w.cookStrict ? 'Usa SOLO questi metodi di cottura: ' : 'Metodi di cottura preferiti: ') + w.cook.join(', ') : ''; }
 function renderWizard(app) {
   const w = wzState();
   setMastAction(`<button class="iconbtn" data-act="go-back" aria-label="Indietro">${ic('left')}</button>`);
-  if (w.step >= WZ_STEPS.length) return drawWzResults(app);
-  const dots = `<div class="wz-dots">${WZ_STEPS.map((t, i) => `<span class="${i < w.step ? 'done' : i === w.step ? 'on' : ''}" data-act="wz-goto" data-i="${i}">${i + 1}</span>`).join('')}</div>`;
+  if (w.results) return drawWzResults(app);
+  const steps = wzSteps(w);
+  if (w.step >= steps.length) w.step = steps.length - 1;
+  const id = steps[w.step];
+  const dots = `<div class="wz-dots">${steps.map((t, i) => `<span class="${i < w.step ? 'done' : i === w.step ? 'on' : ''}" data-act="wz-goto" data-i="${i}" title="${esc(WZ_STEP_LABEL[t])}">${i + 1}</span>`).join('')}</div>
+    <div class="row small" style="margin:-6px 0 10px;justify-content:space-between;flex-wrap:nowrap"><span class="dim">${esc(WZ_STEP_LABEL[id])} · passo ${w.step + 1} di ${steps.length}</span>${w.step > 0 && w.step < steps.length - 1 ? `<a href="#" data-act="wz-go" style="font-weight:600;white-space:nowrap">Proponi ora ${ic('right').replace('<svg', '<svg style="width:14px;height:14px;vertical-align:-2px"')}</a>` : ''}</div>`;
   let body = '';
-  if (w.step === 0) body = `<h2>Cosa devi preparare?</h2><p class="dim small" style="margin-top:0">Puoi sceglierne più di uno.</p>
-    <div class="chips big">${WZ_COURSES.map((c) => `<span class="chip ${w.courses.includes(c) ? 'on' : ''}" data-act="wz-tog" data-k="courses" data-v="${esc(c)}">${esc(cap(c))}</span>`).join('')}</div>`;
-  if (w.step === 1) body = `<h2>Per quale occasione?</h2>
+  if (id === 'piatto') body = `<h2>Cosa devi preparare?</h2><p class="dim small" style="margin-top:0">Puoi sceglierne più di uno. Nel passo dopo ti chiedo i dettagli.</p>
+    <div class="chips big">${WZ_COURSES.map((c) => `<span class="chip ${w.courses.includes(c) ? 'on' : ''}" data-act="wz-course" data-v="${esc(c)}">${esc(cap(c))}</span>`).join('')}</div>`;
+  if (id === 'dettagli') body = `<h2>Dimmi qualcosa in più</h2><p class="dim small" style="margin-top:0">Tutto facoltativo: se non scegli niente, decido io.</p>
+    ${w.courses.filter((c) => WZ_DETAILS[c]).map((c) => `<div class="wz-course"><div class="wz-ch">${esc(cap(c))}</div>
+      ${wzQuestions(w, c).map((q) => `<div class="wz-q ${q.sub ? 'sub' : ''}"><h3>${q.sub ? '<span class="dim small">' + esc(q.parent) + ' → </span>' : ''}${esc(q.q)}</h3>
+        <div class="chips">${q.opts.map((o) => `<span class="chip ${(wzDet(w, c)[q.k] || []).includes(o) ? 'on' : ''}" data-act="wz-det" data-c="${esc(c)}" data-k="${esc(q.k)}" data-v="${esc(o)}">${esc(cap(o))}</span>`).join('')}</div></div>`).join('')}
+    </div>`).join('')}`;
+  if (id === 'occasione') body = `<h2>Per quale occasione?</h2>
     <div class="chips big">${WZ_EVENTS.map((c) => `<span class="chip ${w.event === c ? 'on' : ''}" data-act="wz-one" data-k="event" data-v="${esc(c)}">${esc(cap(c))}</span>`).join('')}</div>
     <div style="margin-top:12px"><label class="f">Altro (facoltativo)</label><input type="text" data-wz="eventOther" value="${esc(w.eventOther)}" placeholder="Es. anniversario dei nonni, cena di Halloween"></div>`;
-  if (w.step === 2) body = `<h2>Quanti siete e quanto tempo hai?</h2>
+  if (id === 'cottura') body = `<h2>Come vuoi cuocerlo?</h2><p class="dim small" style="margin-top:0">Scegli gli strumenti che vuoi usare. Se non scegli niente, va bene tutto.</p>
+    <div class="chips big">${WZ_COOK.map((c) => `<span class="chip ${w.cook.includes(c) ? 'on' : ''}" data-act="wz-tog" data-k="cook" data-v="${esc(c)}">${esc(cap(c))}</span>`).join('')}</div>
+    <h3 style="margin-top:14px">Quanto deve essere rigido?</h3>
+    <div class="seg"><button class="${!w.cookStrict ? 'on' : ''}" data-act="wz-strict" data-v="0">Preferiti, ma va bene altro</button><button class="${w.cookStrict ? 'on' : ''}" data-act="wz-strict" data-v="1">Solo questi</button></div>`;
+  if (id === 'tempo') body = `<h2>Quanti siete e quanto tempo hai?</h2>
     <div class="row" style="margin:6px 0 14px"><span class="grow" style="font-weight:600">Persone</span><div class="servings"><button class="iconbtn sm" data-act="wz-ppl" data-d="-1">−</button><span class="v" style="min-width:40px">${w.people}</span><button class="iconbtn sm" data-act="wz-ppl" data-d="1">+</button></div></div>
     <h3>Tempo in cucina</h3><div class="seg">${[30, 60, 90, 120, 240].map((m) => `<button class="${w.time === m ? 'on' : ''}" data-act="wz-set" data-k="time" data-v="${m}">${m < 60 ? m + "'" : m === 240 ? 'senza limiti' : m / 60 + ' h'}</button>`).join('')}</div>
     <h3 style="margin-top:14px">Difficoltà</h3><div class="seg">${['facile', 'media', 'qualsiasi'].map((d) => `<button class="${w.difficulty === d ? 'on' : ''}" data-act="wz-set" data-k="difficulty" data-v="${d}">${cap(d)}</button>`).join('')}</div>`;
-  if (w.step === 3) body = `<h2>Richieste particolari?</h2><p class="dim small" style="margin-top:0">Facoltativo.</p>
+  if (id === 'richieste') body = `<h2>Richieste particolari?</h2><p class="dim small" style="margin-top:0">Facoltativo.</p>
     <div class="chips big">${WZ_WISHES.map((c) => `<span class="chip ${w.wishes.includes(c) ? 'on' : ''}" data-act="wz-tog" data-k="wishes" data-v="${esc(c)}">${esc(cap(c))}</span>`).join('')}</div>
-    <div style="margin-top:12px"><label class="f">Scrivi tu</label><textarea data-wz="notes" rows="3" placeholder="Es. cucina pugliese, ho il forno piccolo, mi piace il pesce, niente piccante">${esc(w.notes)}</textarea></div>`;
-  if (w.step === 4) body = `<h2>Allergie o problemi di salute?</h2><p class="dim small" style="margin-top:0">Di chi mangerà. Le ricette proposte ne terranno conto e resteranno segnate nella ricetta.</p>
+    <div style="margin-top:12px"><label class="f">Scrivi tu</label><textarea data-wz="notes" rows="3" placeholder="Es. cucina pugliese, ho il forno piccolo, niente piccante">${esc(w.notes)}</textarea></div>`;
+  if (id === 'salute') body = `<h2>Allergie o problemi di salute?</h2><p class="dim small" style="margin-top:0">Di chi mangerà. Le ricette proposte ne terranno conto e resteranno segnate nella ricetta.</p>
     <div class="chips big">${NEEDS_FLAGS.map(([k, l]) => `<span class="chip ${w.needs[k] ? 'on' : ''}" data-act="wz-need" data-k="${k}">${l}</span>`).join('')}</div>
     <h3 style="margin-top:14px">Allergie</h3><div class="chips">${ALLERGENS.map(([k]) => `<span class="chip ${w.needs.allergie.includes(k) ? 'on' : ''}" data-act="wz-al" data-v="${esc(k)}">${esc(k)}</span>`).join('')}</div>
     <div style="margin-top:12px"><label class="f">Note sugli ospiti</label><input type="text" data-wz="needs.note" value="${esc(w.needs.note)}" placeholder="Es. Marco celiaco, la nonna senza sale"></div>
     <h3 style="margin-top:14px">Quante proposte?</h3><div class="seg">${[3, 5, 8].map((n) => `<button class="${w.count === n ? 'on' : ''}" data-act="wz-set" data-k="count" data-v="${n}">${n}</button>`).join('')}</div>`;
-  const last = w.step === WZ_STEPS.length - 1;
+  const last = w.step === steps.length - 1;
   app.innerHTML = `<h1 style="margin-top:16px">Cosa cucino?</h1>
     ${!AI.has() ? `<div class="notice" style="margin-bottom:12px"><b>Serve la chiave AI gratuita</b> per le proposte. <a href="#/impostazioni">Inseriscila qui</a>.</div>` : ''}
     ${dots}
@@ -3015,16 +3111,18 @@ function renderWizard(app) {
     </div>`;
 }
 function wzSummary(w) {
-  return [w.courses.length ? w.courses.join(', ') : 'qualsiasi portata', [w.event, w.eventOther].filter(Boolean).join(' – ') || 'nessuna occasione particolare', w.people + ' persone', w.time >= 240 ? 'tempo senza limiti' : 'max ' + fmtMin(w.time), 'difficoltà ' + w.difficulty].concat(w.wishes).concat(needsList(w.needs)).join(' · ');
+  return [w.courses.length ? w.courses.join(', ') : 'qualsiasi portata'].concat(wzDetailText(w).map((x) => x.split(' — ')[1]), [[w.event, w.eventOther].filter(Boolean).join(' – ') || 'nessuna occasione particolare'], w.cook.length ? [(w.cookStrict ? 'solo ' : '') + w.cook.join(', ')] : [], [w.people + ' persone', w.time >= 240 ? 'tempo senza limiti' : 'max ' + fmtMin(w.time), 'difficoltà ' + w.difficulty]).concat(w.wishes).concat(needsList(w.needs)).join(' · ');
 }
-const WZ_RULES = `Sei uno chef italiano esperto che aiuta un cuoco casalingo appassionato (senza scuola di cucina) a scegliere cosa cucinare. Proponi ricette REALI e collaudate, adatte all'occasione, alla stagione, al tempo e alle esigenze indicate. Se ci sono esigenze di salute o allergie, ogni proposta deve già rispettarle (scegli piatti naturalmente adatti o indica la versione adatta). Varia le proposte.
+const WZ_RULES = `Sei uno chef italiano esperto che aiuta un cuoco casalingo appassionato (senza scuola di cucina) a scegliere cosa cucinare. Proponi ricette REALI e collaudate, adatte all'occasione, alla stagione, al tempo e alle esigenze indicate. Rispetta con precisione i dettagli chiesti per ogni portata (base, condimento, protagonista, taglio, tipo di dolce, gusto) e i metodi di cottura indicati; se ci sono più portate, distribuisci le proposte tra le portate. Se ci sono esigenze di salute o allergie, ogni proposta deve già rispettarle (scegli piatti naturalmente adatti o indica la versione adatta). Varia le proposte.
 Rispondi SOLO con JSON:
 {"ideas":[{"title":"","course":"antipasto|primo|secondo|contorno|piatto unico|dolce|aperitivo","description":"1-2 frasi invitanti","minutes":45,"difficulty":"facile|media|impegnativa","why":"perché è adatta a questa occasione e a questi ospiti","needsOk":"come rispetta le esigenze indicate, o stringa vuota se non ce ne sono","mainIngredients":["ingrediente principale"],"searchQuery":"titolo breve da cercare"}]}`;
 function wzPrompt(w) {
   const month = new Date().toLocaleDateString('it-IT', { month: 'long' });
   return [
     'Portate: ' + (w.courses.length ? w.courses.join(', ') : 'scegli tu') + (w.courses.includes('menù completo') ? ' (proponi le portate di un menù coerente: antipasto, primo, secondo, contorno, dolce)' : ''),
+    ...wzDetailText(w).map((x) => 'Dettagli ' + x),
     'Occasione: ' + ([w.event, w.eventOther].filter(Boolean).join(' – ') || 'pasto qualsiasi'),
+    wzCookText(w),
     'Persone: ' + w.people, 'Tempo in cucina: ' + (w.time >= 240 ? 'senza limiti' : 'massimo ' + w.time + ' minuti'), 'Difficoltà: ' + w.difficulty,
     'Mese: ' + month + ' (usa ingredienti di stagione in Italia)',
     w.wishes.length ? 'Richieste: ' + w.wishes.join(', ') : '', w.notes ? 'Note: ' + w.notes : '',
@@ -3038,7 +3136,7 @@ async function wzSearch(more) {
   if (!AI.has()) { toast('Prima inserisci la chiave AI in Impostazioni'); location.hash = '#/impostazioni'; return; }
   if (!more) { w.seen = []; w.added = {}; }
   w.seen = w.seen.concat(w.ideas.map((x) => x.title));
-  w.step = WZ_STEPS.length; w.loading = true; w.error = ''; drawWzResults($('#app'));
+  w.results = true; w.loading = true; w.error = ''; drawWzResults($('#app'));
   try {
     const res = await AI.generate({ system: WZ_RULES, parts: [{ text: wzPrompt(w) }], temperature: 0.9 });
     w.ideas = pickList(res.data, ['ideas', 'idee', 'proposte', 'ricette', 'recipes']).map(normIdea).filter(Boolean);
@@ -3079,6 +3177,7 @@ async function wzAdd(i) {
   w.busy[d.title] = true; drawWzResults($('#app'));
   try {
     const text = `Scrivi la ricetta completa di "${d.title}" (${d.course || ''}: ${d.description || ''}).
+${wzDetailText(w).length ? 'Richieste per le portate: ' + wzDetailText(w).join('; ') + '. ' : ''}${wzCookText(w) ? wzCookText(w) + '. ' : ''}
 Occasione: ${[w.event, w.eventOther].filter(Boolean).join(' – ') || 'pasto qualsiasi'}. Persone: ${w.people}. Tempo massimo: ${w.time >= 240 ? 'senza limiti' : w.time + ' minuti'}. Difficoltà: ${w.difficulty}.
 ${w.wishes.length ? 'Richieste: ' + w.wishes.join(', ') + '. ' : ''}${w.notes ? 'Note: ' + w.notes + '. ' : ''}
 ${profileText(w.needs)} La ricetta deve già rispettare queste esigenze.
@@ -3465,13 +3564,18 @@ const ACT = {
   'wz-ppl': (a) => { const w = wzState(); w.people = Math.max(1, Math.min(50, w.people + +a.dataset.d)); a.parentElement.querySelector('.v').textContent = w.people; },
   'wz-need': (a) => { const w = wzState(); w.needs[a.dataset.k] = !w.needs[a.dataset.k]; a.classList.toggle('on'); },
   'wz-al': (a) => { const w = wzState(); const v = a.dataset.v; w.needs.allergie = w.needs.allergie.includes(v) ? w.needs.allergie.filter((x) => x !== v) : w.needs.allergie.concat(v); a.classList.toggle('on'); },
-  'wz-next': () => { const w = wzState(); w.step++; renderWizard($('#app')); window.scrollTo(0, 0); },
+  'wz-next': () => { const w = wzState(); w.step = Math.min(wzSteps(w).length - 1, w.step + 1); renderWizard($('#app')); window.scrollTo(0, 0); },
+  'wz-course': (a) => { const w = wzState(); const v = a.dataset.v; w.courses = w.courses.includes(v) ? w.courses.filter((x) => x !== v) : w.courses.concat(v); a.classList.toggle('on'); const dots = wzSteps(w).length; if ($$('.wz-dots span').length !== dots) renderWizard($('#app')); },
+  'wz-det': (a) => { const w = wzState(); const d = wzDet(w, a.dataset.c); const k = a.dataset.k, v = a.dataset.v; const cur = d[k] || []; d[k] = cur.includes(v) ? cur.filter((x) => x !== v) : cur.concat(v);
+    const q = (WZ_DETAILS[a.dataset.c] || []).find((x) => x.k === k);
+    if (q && q.then && q.then[v]) { if (!d[k].includes(v)) delete d[q.then[v].k]; const y = window.scrollY; renderWizard($('#app')); window.scrollTo(0, y); } else a.classList.toggle('on'); },
+  'wz-strict': (a) => { const w = wzState(); w.cookStrict = a.dataset.v === '1'; $$('[data-act="wz-strict"]').forEach((b) => b.classList.toggle('on', b === a)); },
   'wz-prev': () => { const w = wzState(); w.step = Math.max(0, w.step - 1); renderWizard($('#app')); window.scrollTo(0, 0); },
   'wz-goto': (a) => { const w = wzState(); w.step = +a.dataset.i; renderWizard($('#app')); },
   'wz-go': () => wzSearch(false),
   'wz-more': () => wzSearch(true),
   'wz-add': (a) => wzAdd(+a.dataset.i),
-  'wz-edit': () => { const w = wzState(); w.step = 0; renderWizard($('#app')); window.scrollTo(0, 0); },
+  'wz-edit': () => { const w = wzState(); w.step = 0; w.results = false; renderWizard($('#app')); window.scrollTo(0, 0); },
   'wz-reset': () => { S.wz = null; renderWizard($('#app')); window.scrollTo(0, 0); },
   'upd-check': () => checkUpdate(false),
   'upd-install': () => installUpdate(),

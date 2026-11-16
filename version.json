@@ -1,10 +1,10 @@
 {
-  "version": "1.9.0",
-  "date": "12 novembre 2026",
+  "version": "1.10.0",
+  "date": "17 novembre 2026",
   "items": [
-    "Nuova funzione Scansiona: inquadri il codice a barre di un prodotto al supermercato (o fotografi la confezione) e ti propongo ricette fatte apposta per quel prodotto, con l'elenco di cosa ti serve ancora e il pulsante per metterlo nella lista della spesa.",
-    "Dati del prodotto (nome, formato, allergeni) presi dal database aperto Open Food Facts; ricette del tuo ricettario che lo usano già in cima.",
-    "Home ridisegnata per sezioni: Trova un'idea, Aggiungi al ricettario, Spesa (con lo stato della lista) e un'anteprima del ricettario.",
-    "Nuova barra in basso: Home, Ricettario, Scansiona al centro, Spesa (con il numero di ricette) e Altro. Il ricettario completo ha ora una pagina sua."
+    "\"Cosa cucino?\" fa domande diverse in base alla portata: per un primo chiede la base (pasta lunga o corta, riso, gnocchi, zuppe…) e il condimento (verdure, pesce, carne rossa o bianca…), per un secondo il protagonista e come cucinarlo, per un dolce che tipo (torta, biscotti, al cucchiaio…) e che gusto.",
+    "Le risposte aprono sotto-domande: scegli \"pesce\" e ti chiede che pesce, scegli \"torta\" e ti chiede che torta, scegli \"carne rossa\" e ti chiede il taglio.",
+    "Nuovo passaggio Cottura: forno, fornelli, friggitrice ad aria, microonde, griglia, Bimby, pentola a pressione, vapore o senza cottura, come preferenza o come vincolo.",
+    "Link \"Proponi ora\" in alto per saltare i passaggi che non ti interessano."
   ]
 }
