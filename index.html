@@ -3,6 +3,11 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.10.1 — 17 novembre 2026
+    - AI veloce: thinkingLevel low / thinkingBudget 0, modelli stabili prima
+      delle anteprime, scadenza totale 110 s, modelli lenti in fondo per 6 h,
+      contatore secondi e Annulla.
+
   v1.10.0 — 17 novembre 2026
     - Cosa cucino?: dettagli per portata con sotto-domande (WZ_DETAILS),
       passaggio Cottura, salto rapido alle proposte.
@@ -426,6 +431,7 @@ table.nutri tr.sub td:first-child{padding-left:18px;color:var(--dim)}
 .prod img,.prod .ph0{width:92px;height:92px;border-radius:12px;object-fit:contain;background:#fff;flex:none;display:grid;place-items:center;color:var(--accent)}
 .prod .ph0{background:var(--panel-2)} .prod .ph0 svg{width:40px;height:40px}
 .prod>div{flex:1;min-width:0}
+.loadcard{display:flex;gap:12px;align-items:center}
 .tobuy{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line);font-size:.92rem}
 .tobuy ul{margin:4px 0 4px;padding-left:18px}
 .shop-rec{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);flex-wrap:wrap}
@@ -589,8 +595,13 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.10.1';
 const CHANGELOG = [
+  { v: '1.10.1', d: '17 novembre 2026', items: [
+    'Ricerca di ricette molto più veloce: l\'AI usa un ragionamento breve (basta per idee e ricette) e l\'app sceglie i modelli Gemini stabili prima di quelli in anteprima, più lenti e intasati.',
+    'Mai più attese di minuti: ogni ricerca ha un tempo massimo; se un modello è lento l\'app passa al successivo e se lo ricorda per qualche ora.',
+    'Durante la ricerca vedi i secondi trascorsi e puoi annullare. Nel registro delle richieste AI (Altro) compare anche quanto ha impiegato ogni risposta.'
+  ]},
   { v: '1.10.0', d: '17 novembre 2026', items: [
     '"Cosa cucino?" fa domande diverse in base alla portata: per un primo chiede la base (pasta lunga o corta, riso, gnocchi, zuppe…) e il condimento (verdure, pesce, carne rossa o bianca…), per un secondo il protagonista e come cucinarlo, per un dolce che tipo (torta, biscotti, al cucchiaio…) e che gusto.',
     'Le risposte aprono sotto-domande: scegli "pesce" e ti chiede che pesce, scegli "torta" e ti chiede che torta, scegli "carne rossa" e ti chiede il taglio.',
@@ -988,14 +999,18 @@ const AI = {
     try { list = await this.models(); } catch {}
     const ver = (n) => { const m = n.match(/gemini-(\d+(?:\.\d+)?)/); return m ? parseFloat(m[1]) : 0; };
     const usable = list.filter((n) => /^gemini-/.test(n) && /flash/.test(n) && !/(image|tts|audio|live|embed|thinking|8b|vision|robotics|computer)/.test(n));
-    const score = (n) => ver(n) * 10 - (/lite/.test(n) ? 50 : 0) - (/preview|exp/.test(n) ? 3 : 0);
+    // stabili prima delle anteprime (più lente e intasate), "lite" in fondo
+    const score = (n) => ver(n) * 10 - (/lite/.test(n) ? 50 : 0) - (/preview|exp|latest/.test(n) ? 25 : 0);
     usable.sort((a, b) => score(b) - score(a));
+    const slow = settings.get('gemini_slow', {}); const now = Date.now();
+    const isSlow = (m) => slow[m] && now - slow[m] < 6 * 3600e3;
     const out = [];
     if (chosen && chosen !== 'auto') out.push(chosen);
     const good = settings.get('gemini_working', '');
-    if (good && (!list.length || list.includes(good))) out.push(good);
+    if (good && !isSlow(good) && (!list.length || list.includes(good))) out.push(good);
     out.push(...usable, 'gemini-2.5-flash', 'gemini-2.5-flash-lite');
-    return [...new Set(out)].slice(0, 6);
+    const uniq = [...new Set(out)];
+    return uniq.filter((m) => !isSlow(m) || m === chosen).concat(uniq.filter((m) => isSlow(m) && m !== chosen)).slice(0, 6);
   },
   async model() { return (await this.candidates())[0]; },
   errMsg(status, j) {
@@ -1007,6 +1022,13 @@ const AI = {
     return 'Errore AI (' + status + '): ' + (m || 'risposta non valida');
   },
   log(entry) { const l = settings.get('ai_log', []); l.unshift(Object.assign({ t: Date.now() }, entry)); settings.set('ai_log', l.slice(0, 12)); },
+  /* ragionamento breve: per idee e ricette basta, ed è molto più veloce */
+  thinking(model, level) {
+    if (!level || (this._noThink || {})[model]) return null;
+    if (/gemini-2\.5/.test(model)) return /flash/.test(model) ? { thinkingBudget: level === 'off' || level === 'low' || level === 'minimal' ? 0 : 1024 } : null;
+    if (/gemini-[3-9]/.test(model)) return { thinkingLevel: level === 'off' ? 'minimal' : level };
+    return null;
+  },
   async call(model, body, timeoutMs = 150000) {
     const r = await fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(this.key()), timeoutMs, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
@@ -1016,41 +1038,59 @@ const AI = {
   },
   /* parts: [{text}|{inlineData}|{fileData}] — tools: ['google_search'|'url_context']
      Se un modello è sovraccarico o non disponibile prova il successivo; se gli strumenti web non sono permessi riprova senza. */
-  async generate({ parts, system, tools = [], json = true, temperature = 0.4, timeoutMs = 150000, maxModels = 6 }) {
+  async generate({ parts, system, tools = [], json = true, temperature = 0.4, timeoutMs = 60000, deadlineMs = 110000, maxModels = 6, think = 'low', signal = null }) {
     if (!this.has()) throw Object.assign(new Error('Serve la chiave AI gratuita: inseriscila in Impostazioni.'), { code: 'nokey' });
+    const t0 = Date.now();
     const models = (await this.candidates()).slice(0, maxModels);
-    let useTools = tools.slice(); let last = null; const tried = [];
-    for (const model of models) {
+    const noTools = Date.now() - settings.get('ai_notools', 0) < 24 * 3600e3;
+    let useTools = noTools ? [] : tools.slice(); let last = null; const tried = [];
+    this._noThink = this._noThink || {};
+    outer: for (const model of models) {
       for (let attempt = 0; attempt < 3; attempt++) {
+        if (signal && signal.cancelled) throw Object.assign(new Error('Annullato.'), { code: 'cancel' });
+        const left = deadlineMs - (Date.now() - t0);
+        if (left < 8000) { if (!last) last = new Error('L\'AI non ha risposto in tempo.'); break outer; }
         const body = { contents: [{ role: 'user', parts }], generationConfig: { temperature } };
+        const th = this.thinking(model, think); if (th) body.generationConfig.thinkingConfig = th;
         if (system) body.systemInstruction = { parts: [{ text: system }] };
         if (useTools.length) body.tools = useTools.map((t) => ({ [t]: {} }));
         else if (json) body.generationConfig.responseMimeType = 'application/json';
-        const res = await this.call(model, body, timeoutMs);
+        const tc = Date.now();
+        const res = await this.call(model, body, Math.min(timeoutMs, left));
+        const secs = Math.round((Date.now() - tc) / 100) / 10;
+        if (signal && signal.cancelled) throw Object.assign(new Error('Annullato.'), { code: 'cancel' });
         if (res.ok) {
           const cand = (res.j.candidates || [])[0] || {};
           const text = ((cand.content && cand.content.parts) || []).filter((p) => !p.thought).map((p) => p.text || '').join('');
           if (!text) {
+            this.log({ model, ok: false, status: 200, msg: 'risposta vuota (' + (cand.finishReason || '?') + ')', secs });
             last = Object.assign(new Error(cand.finishReason === 'SAFETY' ? 'L\'AI ha rifiutato questo contenuto.' : 'L\'AI non ha restituito nulla.'), { status: 200, raw: cand.finishReason || '' });
             if (cand.finishReason === 'SAFETY') throw last;
             break; // prova il modello successivo
           }
           let data = null;
-          if (json) { try { data = parseJsonLoose(text); } catch (e) { last = Object.assign(e, { status: 200, raw: text.slice(0, 120) }); if (attempt < 1) continue; break; } }
+          if (json) { try { data = parseJsonLoose(text); } catch (e) { this.log({ model, ok: false, status: 200, msg: 'risposta illeggibile', secs }); last = Object.assign(e, { status: 200, raw: text.slice(0, 120) }); if (attempt < 1) continue; break; } }
           settings.set('gemini_working', model);
-          this.log({ model, ok: true, tools: useTools.join(',') });
+          if (secs > 45) { const sl = settings.get('gemini_slow', {}); sl[model] = Date.now(); settings.set('gemini_slow', sl); }
+          this.log({ model, ok: true, tools: useTools.join(','), secs });
           const sources = ((cand.groundingMetadata && cand.groundingMetadata.groundingChunks) || []).map((c) => c.web).filter(Boolean);
           return { text, sources, data, model, usedTools: useTools.length > 0 };
         }
         tried.push(model + ' (' + (res.status || 'rete') + ')');
-        this.log({ model, ok: false, status: res.status, msg: res.msg.slice(0, 160), tools: useTools.join(',') });
+        this.log({ model, ok: false, status: res.status, msg: res.msg.slice(0, 160), tools: useTools.join(','), secs });
         last = Object.assign(new Error(this.errMsg(res.status, res.j)), { status: res.status, raw: res.msg });
         if (res.status === 400 && /api key/i.test(res.msg)) throw last;
         if (res.status === 403) throw last;
-        // strumenti web non permessi (succede col piano gratuito): riprova subito senza
-        if (useTools.length && res.status !== 0 && !(res.status === 429 && !/search|ground|tool|url/i.test(res.msg) && !/limit:\s*0\b/.test(res.msg))) { useTools = []; attempt--; continue; }
-        if (res.status === 0 && /tempo scaduto/.test(res.msg)) { last.message = 'L\'AI ci sta mettendo troppo (' + Math.round(timeoutMs / 1000) + ' s).'; break; }
-        if ((res.status === 503 || res.status === 500 || res.status === 0) && attempt < 1) { await sleep(1500 * (attempt + 1)); continue; }
+        // il modello non accetta l'impostazione del ragionamento: riprova senza
+        if (res.status === 400 && /think/i.test(res.msg) && !this._noThink[model]) { this._noThink[model] = true; attempt--; continue; }
+        // strumenti web non permessi (succede col piano gratuito): riprova subito senza e non riprovarli per un giorno
+        if (useTools.length && res.status !== 0 && !(res.status === 429 && !/search|ground|tool|url/i.test(res.msg) && !/limit:\s*0\b/.test(res.msg))) { useTools = []; settings.set('ai_notools', Date.now()); attempt--; continue; }
+        if (res.status === 0 && /tempo scaduto/.test(res.msg)) {
+          const sl = settings.get('gemini_slow', {}); sl[model] = Date.now(); settings.set('gemini_slow', sl);
+          if (settings.get('gemini_working', '') === model) settings.set('gemini_working', '');
+          last.message = 'L\'AI ci sta mettendo troppo.'; break;
+        }
+        if ((res.status === 503 || res.status === 500) && attempt < 1) { await sleep(1200); continue; }
         break; // 404, 429, 5xx ripetuti → modello successivo
       }
     }
@@ -1370,8 +1410,8 @@ async function importYouTube(pf, log, hint) {
   if (info.seconds > 900) videoPart.videoMetadata = { fps: 0.5 }; // video lunghi: meno fotogrammi, meno attesa
   let res = null, videoErr = null;
   try {
-    try { res = await AI.generate({ system: sys, parts: [videoPart, { text }], temperature: 0.3, timeoutMs: 300000, maxModels: 3 }); }
-    catch (e) { if (videoPart.videoMetadata && e.status === 400) { delete videoPart.videoMetadata; res = await AI.generate({ system: sys, parts: [videoPart, { text }], temperature: 0.3, timeoutMs: 300000, maxModels: 3 }); } else throw e; }
+    try { res = await AI.generate({ system: sys, parts: [videoPart, { text }], temperature: 0.3, timeoutMs: 300000, deadlineMs: 420000, maxModels: 3, think: 'medium' }); }
+    catch (e) { if (videoPart.videoMetadata && e.status === 400) { delete videoPart.videoMetadata; res = await AI.generate({ system: sys, parts: [videoPart, { text }], temperature: 0.3, timeoutMs: 300000, deadlineMs: 420000, maxModels: 3, think: 'medium' }); } else throw e; }
     if (!res.data || res.data.notARecipe) { videoErr = new Error('Nel video non ho trovato una ricetta.'); res = null; }
   } catch (e) { videoErr = e; }
   let fromDesc = false;
@@ -1517,7 +1557,7 @@ async function importFromVideoFile(file, note, log) {
     const s2 = log('L\'AI guarda il video: può volerci un minuto o due');
     const sys = RECIPE_RULES + '\nPer ogni passaggio indica in "videoAt" il secondo del video in cui si vede meglio quel passaggio (numero intero). Usa quello che si vede, che si sente e le scritte a schermo.';
     let res;
-    try { res = await AI.generate({ system: sys, parts: [part, { text: 'Trasforma questa video ricetta nel formato richiesto.' + (note ? '\nNote o didascalia del post:\n' + note : '') }], temperature: 0.3, timeoutMs: 300000, maxModels: 3 }); }
+    try { res = await AI.generate({ system: sys, parts: [part, { text: 'Trasforma questa video ricetta nel formato richiesto.' + (note ? '\nNote o didascalia del post:\n' + note : '') }], temperature: 0.3, timeoutMs: 300000, deadlineMs: 420000, maxModels: 3, think: 'medium' }); }
     catch (e) { s2.ko(e.message); throw e; }
     if (!res.data || res.data.notARecipe) { s2.ko(); throw new Error('Nel video non ho trovato una ricetta.'); }
     s2.ok();
@@ -1566,7 +1606,7 @@ Rispetta: tempo massimo totale, strumenti disponibili, numero di persone, prefer
 Rispondi SOLO con JSON:
 {"ideas":[{"title":"","description":"1 frase","category":"primo|secondo|...","minutes":25,"difficulty":"facile|media|impegnativa","uses":["ingredienti che ha e che usa"],"missing":["ingredienti che mancherebbero, vuoto se nessuno"],"why":"perché è adatta","searchQuery":"titolo breve da cercare su un sito di ricette","sourceUrl":"link a una ricetta reale se l'hai trovata, altrimenti stringa vuota"}]}`;
 
-async function fridgeIdeas(q, exclude) {
+async function fridgeIdeas(q, exclude, signal) {
   const prompt = [
     'Ingredienti che ho: ' + (q.items.join(', ') || 'pochi, a te la scelta'),
     q.usePantry ? 'In dispensa ho sempre: ' + q.pantry.join(', ') : 'Non dare per scontata la dispensa.',
@@ -1579,7 +1619,7 @@ async function fridgeIdeas(q, exclude) {
     exclude.length ? 'NON riproporre queste idee già viste: ' + exclude.join('; ') : '',
     'Proponi 5 idee. Cerca sul web ricette reali italiane quando puoi e metti il link in sourceUrl.'
   ].filter(Boolean).join('\n');
-  const res = await AI.generateWithFallback({ system: FRIDGE_RULES, tools: ['google_search'], parts: [{ text: prompt }], temperature: 0.9 });
+  const res = await AI.generateWithFallback({ system: FRIDGE_RULES, tools: ['google_search'], parts: [{ text: prompt }], temperature: 0.8, signal });
   const data = res.data || {};
   return { ideas: pickList(data, ['ideas', 'idee', 'proposte', 'ricette', 'recipes']).map(normIdea).filter(Boolean), sources: res.sources || [], web: res.usedTools };
 }
@@ -1937,6 +1977,10 @@ function openModal(title, html, onMount) {
   if (onMount) onMount(m);
   return m;
 }
+function loadingCard(text, cancelAct) {
+  return `<div class="card loadcard"><span style="color:var(--accent)">${ic('refresh', 'spin').replace('<svg', '<svg style="width:22px;height:22px"')}</span><span style="flex:1">${esc(text)}<span class="small dim" style="display:block"><span class="elapsed" data-t0="${Date.now()}">0</span> s · di solito 10-30 secondi</span></span>${cancelAct ? `<button class="btn sm ghost" data-act="${cancelAct}">Annulla</button>` : ''}</div>`;
+}
+setInterval(() => { $$('.elapsed').forEach((e) => { e.textContent = Math.round((Date.now() - +e.dataset.t0) / 1000); }); }, 1000);
 function toastAction(msg, label, fn) {
   const t = document.createElement('div');
   t.className = 'toast'; t.style.display = 'flex'; t.style.gap = '12px'; t.style.alignItems = 'center';
@@ -2891,7 +2935,8 @@ Rispondi SOLO con JSON:
 async function scanIdeas(more) {
   const sc = scanState(); const p = sc.product; if (!p) return;
   if (more) sc.seen = sc.seen.concat(sc.ideas.map((x) => x.title));
-  sc.loading = true; sc.error = ''; drawScanResult($('#app'));
+  const sig = { cancelled: false }; if (sc.sig) sc.sig.cancelled = true; sc.sig = sig;
+  sc.loading = true; sc.error = ''; sc.t0 = Date.now(); drawScanResult($('#app'));
   const pantry = settings.get('fr_usePantry', true) ? settings.get('fr_pantry', PANTRY_DEFAULT) : [];
   const text = [
     'Prodotto: ' + productLabel(p) + (p.type ? ' — ' + p.type : '') + (p.categories ? ' — categorie: ' + p.categories : ''),
@@ -2904,10 +2949,11 @@ async function scanIdeas(more) {
     'Proponi 5 ricette.'
   ].filter(Boolean).join('\n');
   try {
-    const res = await AI.generate({ system: SCAN_RULES, parts: [{ text }], temperature: 0.9 });
+    const res = await AI.generate({ system: SCAN_RULES, parts: [{ text }], temperature: 0.8, signal: sig });
     sc.ideas = pickList(res.data, ['ideas', 'idee', 'ricette', 'recipes']).map(normIdea).filter(Boolean).map((x) => Object.assign(x, { toBuy: Array.isArray(x.toBuy) ? x.toBuy.filter((t) => t && t.name) : [] }));
     if (!sc.ideas.length) throw new Error('Nessuna proposta, riprova.');
-  } catch (e) { sc.error = e.message; }
+  } catch (e) { if (e.code === 'cancel') return; sc.error = e.message; }
+  if (sig.cancelled) return;
   sc.loading = false;
   if (location.hash.startsWith('#/scansiona')) drawScanResult($('#app'));
 }
@@ -2935,7 +2981,7 @@ function drawScanResult(app) {
   <div class="row" style="margin-bottom:10px;flex-wrap:nowrap"><span class="grow small" style="font-weight:600">Per quante persone?</span>
     <div class="servings sm"><button class="iconbtn sm" data-act="scan-ppl" data-d="-1">−</button><span class="v">${sc.people}</span><button class="iconbtn sm" data-act="scan-ppl" data-d="1">+</button></div></div>
   ${!AI.has() ? `<div class="notice">Per le proposte serve la <a href="#/impostazioni">chiave AI gratuita</a>.</div>` : ''}
-  ${sc.loading ? `<div class="card" style="display:flex;gap:12px;align-items:center"><span style="color:var(--accent)">${ic('refresh', 'spin').replace('<svg', '<svg style="width:22px;height:22px"')}</span> Penso a cosa cucinarci…</div>` : ''}
+  ${sc.loading ? loadingCard('Penso a cosa cucinarci…', 'scan-cancel').replace(/data-t0="\d+"/, 'data-t0="' + (sc.t0 || Date.now()) + '"') : ''}
   ${sc.error ? `<div class="notice"><b>Non ci sono riuscito.</b> ${esc(sc.error)} <button class="btn sm" data-act="scan-retry">Riprova</button></div>` : ''}
   ${!sc.loading && sc.ideas.length ? `<div class="stack">${sc.ideas.map((d, i) => {
     const added = sc.added[d.title]; const busy = sc.busy[d.title]; const carted = sc.carted[d.title];
@@ -3136,19 +3182,21 @@ async function wzSearch(more) {
   if (!AI.has()) { toast('Prima inserisci la chiave AI in Impostazioni'); location.hash = '#/impostazioni'; return; }
   if (!more) { w.seen = []; w.added = {}; }
   w.seen = w.seen.concat(w.ideas.map((x) => x.title));
-  w.results = true; w.loading = true; w.error = ''; drawWzResults($('#app'));
+  const sig = { cancelled: false }; if (w.sig) w.sig.cancelled = true; w.sig = sig;
+  w.results = true; w.loading = true; w.error = ''; w.t0 = Date.now(); drawWzResults($('#app'));
   try {
-    const res = await AI.generate({ system: WZ_RULES, parts: [{ text: wzPrompt(w) }], temperature: 0.9 });
+    const res = await AI.generate({ system: WZ_RULES, parts: [{ text: wzPrompt(w) }], temperature: 0.8, signal: sig });
     w.ideas = pickList(res.data, ['ideas', 'idee', 'proposte', 'ricette', 'recipes']).map(normIdea).filter(Boolean);
     if (!w.ideas.length) throw new Error('Nessuna proposta, riprova cambiando qualche risposta.');
-  } catch (e) { w.error = e.message + (e.raw ? ' — Dettaglio da Google: ' + String(e.raw).slice(0, 200) : ''); }
-  w.loading = false; drawWzResults($('#app'));
+  } catch (e) { if (e.code === 'cancel') return; w.error = e.message + (e.raw ? ' — Dettaglio da Google: ' + String(e.raw).slice(0, 200) : ''); }
+  if (sig.cancelled) return;
+  w.loading = false; if (location.hash === '#/consigli') drawWzResults($('#app'));
 }
 function drawWzResults(app) {
   const w = wzState(); const enc = encodeURIComponent;
   app.innerHTML = `<h1 style="margin-top:16px">Ecco cosa puoi cucinare</h1>
     <p class="small dim" style="margin-top:0">${esc(wzSummary(w))} · <a href="#" data-act="wz-edit">modifica risposte</a></p>
-    ${w.loading ? `<div class="card" style="display:flex;gap:12px;align-items:center"><span style="color:var(--accent)">${ic('refresh', 'spin').replace('<svg', '<svg style="width:22px;height:22px"')}</span> Penso a qualche ricetta per te…</div>` : ''}
+    ${w.loading ? loadingCard('Penso a qualche ricetta per te…', 'wz-cancel').replace(/data-t0="\d+"/, 'data-t0="' + (w.t0 || Date.now()) + '"') : ''}
     ${w.error ? `<div class="notice"><b>Non ci sono riuscito.</b> ${esc(w.error)} <button class="btn sm" data-act="wz-go">Riprova</button></div>` : ''}
     ${!w.loading && w.ideas.length ? `<div class="stack">${w.ideas.map((d, i) => {
       const added = w.added[d.title]; const busy = w.busy[d.title];
@@ -3253,7 +3301,7 @@ function frAdd() {
 function frRedraw() { const y = window.scrollY; const notes = S.frigo.notes; renderFrigo($('#app')); S.frigo.notes = notes; window.scrollTo(0, y); }
 function drawIdeas(loading) {
   const box = $('#frRes'); if (!box) return;
-  if (loading) { box.innerHTML = `<div class="card" style="display:flex;gap:12px;align-items:center"><span style="color:var(--accent)">${ic('refresh', 'spin').replace('<svg', '<svg style="width:22px;height:22px"')}</span> Cerco idee per te…</div>`; return; }
+  if (loading) { box.innerHTML = loadingCard('Cerco idee per te…', 'fr-cancel'); return; }
   if (!S.frigoIdeas.length) { box.innerHTML = ''; return; }
   const enc = encodeURIComponent;
   box.innerHTML = `
@@ -3283,14 +3331,17 @@ async function frSearch(more) {
   if (!f.items.length && !confirm('Non hai indicato ingredienti: cerco idee generiche con la dispensa?')) return;
   if (!more) S.frigoSeen = [];
   S.frigoSeen = S.frigoSeen.concat(S.frigoIdeas.map((x) => x.title));
+  const sig = { cancelled: false }; if (S.frSig) S.frSig.cancelled = true; S.frSig = sig;
   drawIdeas(true);
   $('#frRes').scrollIntoView({ behavior: 'smooth', block: 'start' });
   try {
-    const out = await fridgeIdeas(f, S.frigoSeen);
+    const out = await fridgeIdeas(f, S.frigoSeen, sig);
+    if (sig.cancelled || !$('#frRes')) return;
     S.frigoIdeas = out.ideas; S.frigoSources = out.sources; S.frigoWeb = out.web;
     if (!out.ideas.length) throw new Error('Nessuna idea trovata, riprova cambiando qualcosa.');
     drawIdeas();
   } catch (e) {
+    if (e.code === 'cancel' || sig.cancelled || !$('#frRes')) return;
     $('#frRes').innerHTML = `<div class="notice"><b>Ricerca non riuscita.</b> ${esc(e.message)}${e.raw ? `<div class="small dim" style="margin-top:4px">Dettaglio da Google: ${esc(String(e.raw).slice(0, 200))}</div>` : ''}<div style="margin-top:8px"><button class="btn sm" data-act="fr-go">${ic('refresh')} Riprova</button></div></div>`;
   }
 }
@@ -3501,7 +3552,7 @@ async function testKey() {
 function drawAiLog() {
   const el = $('#aiLog'); if (!el) return;
   const l = settings.get('ai_log', []);
-  el.innerHTML = l.length ? `<ul class="log small">${l.map((x) => `<li>${new Date(x.t).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} · <b>${esc(x.model)}</b>${x.tools ? ' + ' + esc(x.tools) : ''} · ${x.ok ? '<span style="color:var(--ok)">ok</span>' : `<span style="color:var(--bad)">errore ${esc(x.status)}</span> <span class="dim">${esc(x.msg || '')}</span>`}</li>`).join('')}</ul>` : '<p class="small dim" style="margin:0">Nessuna richiesta ancora.</p>';
+  el.innerHTML = l.length ? `<ul class="log small">${l.map((x) => `<li>${new Date(x.t).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} · <b>${esc(x.model)}</b>${x.tools ? ' + ' + esc(x.tools) : ''}${x.secs != null ? ' · ' + esc(x.secs) + ' s' : ''} · ${x.ok ? '<span style="color:var(--ok)">ok</span>' : `<span style="color:var(--bad)">errore ${esc(x.status)}</span> <span class="dim">${esc(x.msg || '')}</span>`}</li>`).join('')}</ul>` : '<p class="small dim" style="margin:0">Nessuna richiesta ancora.</p>';
 }
 async function importBackup(e) {
   const f = e.target.files[0]; if (!f) return;
@@ -3533,6 +3584,7 @@ const ACT = {
   'scan-torch': async (a) => { try { const t = scanStream && scanStream.getVideoTracks()[0]; const on = !a.classList.contains('on'); await t.applyConstraints({ advanced: [{ torch: on }] }); a.classList.toggle('on', on); } catch {} },
   'scan-ppl': (a) => { const sc = scanState(); sc.people = Math.max(1, Math.min(30, sc.people + +a.dataset.d)); a.parentElement.querySelector('.v').textContent = sc.people; clearTimeout(sc.pplT); sc.pplT = setTimeout(() => { if (sc.ideas.length) scanIdeas(false); }, 900); },
   'scan-more': () => scanIdeas(true),
+  'scan-cancel': () => { const sc = scanState(); if (sc.sig) sc.sig.cancelled = true; sc.loading = false; drawScanResult($('#app')); },
   'scan-retry': () => scanIdeas(false),
   'scan-add': (a) => scanAdd(+a.dataset.i),
   'scan-cart': (a) => scanCart(+a.dataset.i),
@@ -3573,6 +3625,7 @@ const ACT = {
   'wz-prev': () => { const w = wzState(); w.step = Math.max(0, w.step - 1); renderWizard($('#app')); window.scrollTo(0, 0); },
   'wz-goto': (a) => { const w = wzState(); w.step = +a.dataset.i; renderWizard($('#app')); },
   'wz-go': () => wzSearch(false),
+  'wz-cancel': () => { const w = wzState(); if (w.sig) w.sig.cancelled = true; w.loading = false; if (!w.ideas.length) { w.results = false; renderWizard($('#app')); } else drawWzResults($('#app')); },
   'wz-more': () => wzSearch(true),
   'wz-add': (a) => wzAdd(+a.dataset.i),
   'wz-edit': () => { const w = wzState(); w.step = 0; w.results = false; renderWizard($('#app')); window.scrollTo(0, 0); },
@@ -3692,6 +3745,7 @@ const ACT = {
     $('#pantryGo', m).onclick = () => { f.pantry = $('#pantryIn', m).value.split(',').map((s) => s.trim()).filter(Boolean); saveFrigo(); closeModal(); frRedraw(); };
   },
   'fr-go': () => frSearch(false),
+  'fr-cancel': () => { if (S.frSig) S.frSig.cancelled = true; drawIdeas(); },
   'fr-more': () => frSearch(true),
   'fr-make': async (a) => {
     const idea = S.frigoIdeas[+a.dataset.i]; a.disabled = true; a.innerHTML = ic('refresh', 'spin') + ' Scrivo la ricetta…';
@@ -3716,7 +3770,7 @@ const ACT = {
   },
   // impostazioni
   'key-show': () => { const i = $('#keyIn'); i.type = i.type === 'password' ? 'text' : 'password'; },
-  'key-save': () => { const v = $('#keyIn').value.trim(); settings.set('gemini_key', v); settings.set('gemini_models', null); if (v) testKey(); else toast('Chiave rimossa'); },
+  'key-save': () => { const v = $('#keyIn').value.trim(); settings.set('gemini_key', v); settings.set('gemini_models', null); settings.set('gemini_slow', {}); settings.set('ai_notools', 0); if (v) testKey(); else toast('Chiave rimossa'); },
   'key-del': () => { settings.set('gemini_key', ''); settings.set('gemini_models', null); renderSettings($('#app')); toast('Chiave rimossa'); },
   'bk-export': () => { downloadFile('incucina-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify({ app: 'incucina', version: APP_VERSION, date: Date.now(), recipes: S.recipes })); },
   'bk-wipe': async () => { if (!(await confirmBox('Cancellare TUTTE le ricette da questo dispositivo? Fai prima un backup.', 'Cancella tutto', true))) return; await DB.clear(); await loadRecipes(); renderSettings($('#app')); toast('Ricette cancellate'); },

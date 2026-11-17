@@ -1,10 +1,9 @@
 {
-  "version": "1.10.0",
+  "version": "1.10.1",
   "date": "17 novembre 2026",
   "items": [
-    "\"Cosa cucino?\" fa domande diverse in base alla portata: per un primo chiede la base (pasta lunga o corta, riso, gnocchi, zuppe…) e il condimento (verdure, pesce, carne rossa o bianca…), per un secondo il protagonista e come cucinarlo, per un dolce che tipo (torta, biscotti, al cucchiaio…) e che gusto.",
-    "Le risposte aprono sotto-domande: scegli \"pesce\" e ti chiede che pesce, scegli \"torta\" e ti chiede che torta, scegli \"carne rossa\" e ti chiede il taglio.",
-    "Nuovo passaggio Cottura: forno, fornelli, friggitrice ad aria, microonde, griglia, Bimby, pentola a pressione, vapore o senza cottura, come preferenza o come vincolo.",
-    "Link \"Proponi ora\" in alto per saltare i passaggi che non ti interessano."
+    "Ricerca di ricette molto più veloce: l'AI usa un ragionamento breve (basta per idee e ricette) e l'app sceglie i modelli Gemini stabili prima di quelli in anteprima, più lenti e intasati.",
+    "Mai più attese di minuti: ogni ricerca ha un tempo massimo; se un modello è lento l'app passa al successivo e se lo ricorda per qualche ora.",
+    "Durante la ricerca vedi i secondi trascorsi e puoi annullare. Nel registro delle richieste AI (Altro) compare anche quanto ha impiegato ogni risposta."
   ]
 }
