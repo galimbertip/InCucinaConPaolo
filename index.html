@@ -3,6 +3,11 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.12.0 — 17 novembre 2026
+    - Sostituzioni per esigenze (SUBS_RULES + "subs" del nutrizionista):
+      note per ingrediente e passaggio, riquadro "Adattata per", lista spesa
+      con sostituti, esigenze di casa, proposte adattabili.
+
   v1.11.0 — 17 novembre 2026
     - Calorie a porzione e indicatore di spesa (€/€€/€€€ + costo stimato)
       sulle proposte, ordinamento, stima nelle ricette e nel nutrizionista.
@@ -373,6 +378,18 @@ table.nutri tr.sub td:first-child{padding-left:18px;color:var(--dim)}
 .chip.no{opacity:.7;text-decoration:line-through}
 .prof-alert{margin-top:12px;border-radius:12px;padding:12px 14px;background:color-mix(in srgb,var(--bad) 12%,var(--panel));border:1px solid color-mix(in srgb,var(--bad) 45%,transparent);font-size:.93rem}
 .prof-alert b{color:var(--bad)}
+.subn{display:block;margin-top:3px;font-size:.84rem;color:var(--text);background:var(--warn-bg);border-left:3px solid var(--warn);border-radius:0;padding:3px 8px}
+.subn b:first-child{color:var(--warn)}
+.use.swapped{border-color:color-mix(in srgb,var(--warn) 55%,transparent);background:var(--warn-bg)}
+.use s,.adapt s{opacity:.55}
+.stepswap{margin-top:8px;font-size:.88rem;display:flex;gap:6px;align-items:flex-start;color:var(--text);background:var(--warn-bg);border-radius:10px;padding:6px 10px}
+.stepswap svg{width:16px;height:16px;color:var(--warn);flex:none;margin-top:2px}
+.adapt{margin-top:12px;border-radius:12px;padding:12px 14px;background:var(--warn-bg);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent)}
+.adapt ul{margin:2px 0 0;padding-left:18px;font-size:.92rem}
+.adapt-h{display:flex;gap:8px;align-items:flex-start}
+.adapt-h svg{width:18px;height:18px;color:var(--warn);flex:none;margin-top:2px}
+.adapt.sm{padding:8px 10px;font-size:.88rem;margin-top:8px}
+.adapt.sm svg{width:14px;height:14px;color:var(--warn);vertical-align:-2px}
 .needsbar{display:flex;gap:10px;align-items:center;width:100%;text-align:left;margin-top:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;font-size:.9rem;color:var(--text)}
 .needsbar>svg{width:18px;height:18px;color:var(--accent);flex:none}
 .needsbar>span:not(.ed){flex:1}
@@ -611,8 +628,15 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.11.0';
+const APP_VERSION = '1.12.0';
 const CHANGELOG = [
+  { v: '1.12.0', d: '17 novembre 2026', items: [
+    'Qualsiasi ricetta diventa adatta a intolleranze e allergie: accanto a ogni ingrediente compare cosa usare al suo posto (es. latte → latte senza lattosio, farina 00 → mix senza glutine, con le correzioni di dose) e nei passaggi c\'è l\'avviso "Attenzione: al posto di… usa…".',
+    'Riquadro "Adattata per…" in cima alla ricetta con tutte le sostituzioni e gli ingredienti confezionati da controllare in etichetta (spiga barrata).',
+    'Nuove "Esigenze di casa" in Altro: valgono per tutte le ricette, salvate, importate e proposte. Ogni ricetta può comunque averne di diverse con "Esigenze a tavola".',
+    'La lista della spesa mette già i sostituti (es. "latte senza lattosio, al posto di latte").',
+    'Cosa cucino?, Svuota frigo e Scansiona possono proporre anche ricette "normali", indicando le sostituzioni da fare.'
+  ]},
   { v: '1.11.0', d: '17 novembre 2026', items: [
     'Ogni proposta (Cosa cucino?, Svuota frigo, Scansiona) mostra le calorie a porzione e quanto costa: € economica, €€ spesa media, €€€ costosa, con la spesa totale stimata e quella a testa.',
     'Puoi ordinare le proposte per meno calorie, più economiche o più veloci.',
@@ -1626,7 +1650,7 @@ async function importFromPhotos(files, useCover, log) {
 const FRIDGE_RULES = `Sei uno chef casalingo italiano pratico e creativo. Proponi idee di piatti REALI e collaudati (ricette che esistono davvero, non invenzioni strane) che si possono fare con quello che la persona ha.
 Rispetta: tempo massimo totale, strumenti disponibili, numero di persone, preferenze. Varia le proposte (tecniche e tipi di piatto diversi). Per ogni proposta stima anche, in modo onesto e realistico: "kcal" = calorie di UNA porzione; "costEuro" = spesa totale stimata in euro per tutti gli ingredienti, per il numero di persone indicato, ai prezzi medi di un supermercato italiano (dispensa base inclusa a valore pieno); "costLevel" = 1 economica (meno di 3 € a persona), 2 media (3-7 € a persona), 3 costosa (oltre 7 € a persona).
 Rispondi SOLO con JSON:
-{"ideas":[{"title":"","description":"1 frase","category":"primo|secondo|...","minutes":25,"difficulty":"facile|media|impegnativa","uses":["ingredienti che ha e che usa"],"missing":["ingredienti che mancherebbero, vuoto se nessuno"],"why":"perché è adatta","searchQuery":"titolo breve da cercare su un sito di ricette","sourceUrl":"link a una ricetta reale se l'hai trovata, altrimenti stringa vuota","kcal":550,"costEuro":12,"costLevel":2}]}`;
+{"ideas":[{"title":"","description":"1 frase","category":"primo|secondo|...","minutes":25,"difficulty":"facile|media|impegnativa","uses":["ingredienti che ha e che usa"],"missing":["ingredienti che mancherebbero, vuoto se nessuno"],"why":"perché è adatta","searchQuery":"titolo breve da cercare su un sito di ricette","sourceUrl":"link a una ricetta reale se l'hai trovata, altrimenti stringa vuota","needsOk":"sostituzioni per le esigenze, o stringa vuota","kcal":550,"costEuro":12,"costLevel":2}]}`;
 
 async function fridgeIdeas(q, exclude, signal) {
   const prompt = [
@@ -1635,6 +1659,7 @@ async function fridgeIdeas(q, exclude, signal) {
     'Strumenti: ' + (q.tools.join(', ') || 'solo fornelli'),
     'Tempo massimo: ' + (q.time >= 120 ? 'anche più di 90 minuti' : q.time + ' minuti'),
     'Persone: ' + q.people,
+    needsList(houseNeeds()).length ? profileText(houseNeeds()) + ' Puoi proporre anche ricette che si adattano con sostituzioni semplici: scrivile in "needsOk".' : '',
     q.kind && q.kind !== 'qualsiasi' ? 'Voglio un: ' + q.kind : '',
     q.strict ? 'Usa SOLO ciò che ho (più la dispensa): "missing" deve essere vuoto.' : 'Posso comprare al massimo 1-2 ingredienti.',
     q.notes ? 'Note: ' + q.notes : '',
@@ -1707,12 +1732,97 @@ function detectAllergens(r) {
 /* Esigenze a tavola: si impostano per ricetta (ospiti diversi a ogni occasione) */
 const NEEDS_DEFAULT = { salutista: false, diabete: false, celiachia: false, lattosio: false, vegetariano: false, vegano: false, allergie: [], note: '' };
 const NEEDS_FLAGS = [['diabete', 'Diabete'], ['celiachia', 'Celiachia'], ['lattosio', 'Intolleranza al lattosio'], ['vegetariano', 'Vegetariani'], ['vegano', 'Vegani'], ['salutista', 'Leggero / salutista']];
-function recipeNeeds(r) { const n = Object.assign({}, NEEDS_DEFAULT, (r && r.diners) || {}); n.allergie = Array.isArray(n.allergie) ? n.allergie : []; return n; }
+function houseNeeds() { const n = Object.assign({}, NEEDS_DEFAULT, settings.get('house_needs', {}) || {}); n.allergie = Array.isArray(n.allergie) ? n.allergie : []; return n; }
+/* esigenze della ricetta: quelle impostate su di lei, altrimenti quelle "di casa" */
+function recipeNeeds(r) { const n = Object.assign({}, NEEDS_DEFAULT, (r && r.diners) || houseNeeds()); n.allergie = Array.isArray(n.allergie) ? n.allergie : []; return n; }
+function needsInherited(r) { return !(r && r.diners) && needsList(houseNeeds()).length > 0; }
 function needsList(n) { return NEEDS_FLAGS.filter(([k]) => n[k]).map(([, l]) => l.toLowerCase()).concat(n.allergie.map((a) => 'allergia: ' + a)); }
 function kcalRef() { return +settings.get('kcal_ref', 0) || +(settings.get('diet_profile', {}) || {}).kcal || 2000; }
 function profileText(n) {
   const a = needsList(n);
   return (a.length ? 'A tavola ci sono persone con queste esigenze: ' + a.join('; ') + '.' : 'Nessuna esigenza alimentare particolare indicata.') + (n.note ? ' Note sugli ospiti: ' + n.note + '.' : '') + ' Fabbisogno di riferimento: ' + kcalRef() + ' kcal al giorno.';
+}
+/* Sostituzioni per le esigenze: tabella pronta (immediata) + quelle più precise del nutrizionista */
+const ALREADY_OK = /senza (lattosio|glutine)|delattosat|gluten ?free|vegetal|di soia|di riso|di mandorl|di avena|di cocco|di mais|di grano saraceno|di ceci|di quinoa|di miglio|di castagn|di teff|di sorgo|0% lattosio|zero lattosio/;
+const SUBS_RULES = [
+  // lattosio
+  { need: 'lattosio', rx: /(?<!al )\blatte\b(?! di (cocco|mandorl|soia|riso|avena))/, sub: 'latte senza lattosio', note: 'stessa dose' },
+  { need: 'lattosio', rx: /\bpanna\b/, sub: 'panna senza lattosio', note: 'stessa dose, monta allo stesso modo' },
+  { need: 'lattosio', rx: /\bburro\b(?! di (arachidi|cacao))/, sub: 'burro senza lattosio', note: 'oppure olio di semi: ¾ della dose' },
+  { need: 'lattosio', rx: /\b(yogurt|mascarpone|ricotta|mozzarell\w*|stracchino|crescenza|philadelphia|formaggio spalmabile|besciamell\w*|scamorz\w*|provol\w*)/, sub: (m) => m[1].replace(/mozzarell\w*/, 'mozzarella') + ' senza lattosio', note: 'nel banco frigo dei supermercati più forniti' },
+  { need: 'lattosio', rx: /\bcioccolat\w* al latte\b/, sub: 'cioccolato fondente', note: 'il fondente di solito non ha latte: controlla l\'etichetta' },
+  { need: 'lattosio', rx: /\b(parmigian\w*|grana)\b/, sub: null, note: 'il Parmigiano Reggiano è naturalmente privo di lattosio; per il Grana controlla la dicitura in etichetta' },
+  { need: 'lattosio', rx: /\bpecorin\w*/, sub: 'pecorino senza lattosio o Parmigiano Reggiano', note: 'il Parmigiano Reggiano è naturalmente privo di lattosio' },
+  // celiachia
+  { need: 'celiachia', rx: /\bfarina\b(?! di (riso|mais|mandorl|ceci|cocco|grano saraceno|castagne|lenticchie|tapioca|quinoa|sorgo|teff|miglio))/, sub: 'mix di farine senza glutine', note: 'per dolci usa un mix "per dolci", per pane e pizza un mix "per pane"; spesso serve un po\' più di liquido' },
+  { need: 'celiachia', rx: /\bsemola\b/, sub: 'farina di mais fioretto o di riso', note: '' },
+  { need: 'celiachia', rx: /\b(spaghett\w*|penne|rigaton\w*|fusill\w*|tagliatell\w*|linguin\w*|mezze maniche|bucatin\w*|paccheri|farfalle|pasta)\b(?! (sfoglia|frolla|brisee|brisée|di mandorl))/, sub: (m) => m[1] + ' senza glutine', note: 'cuoce un minuto in meno: assaggia prima' },
+  { need: 'celiachia', rx: /\b(lasagn\w*|gnocch\w*|ravioli|tortellin\w*)\b/, sub: (m) => m[1] + ' senza glutine', note: '' },
+  { need: 'celiachia', rx: /\bpan ?grattato|\bpangrattato\b/, sub: 'pangrattato senza glutine', note: 'oppure farina di mais tostata' },
+  { need: 'celiachia', rx: /\bpane\b|\bpancarr[eè]\b|\bpan bauletto\b/, sub: 'pane senza glutine', note: '' },
+  { need: 'celiachia', rx: /\bpasta (sfoglia|frolla|brisee|brisée)\b/, sub: (m) => 'pasta ' + m[1] + ' senza glutine', note: 'pronta nel banco frigo dei supermercati più forniti' },
+  { need: 'celiachia', rx: /\b(savoiard\w*|biscott\w*|amarett\w*|fette biscottate|grissin\w*|cracker\w*|pan di spagna)\b/, sub: (m) => m[1] + ' senza glutine', note: '' },
+  { need: 'celiachia', rx: /\b(orzo|farro|cous ?cous|bulgur|segale|kamut|seitan)\b/, sub: 'riso, quinoa, miglio o grano saraceno', note: 'cambia il tempo di cottura' },
+  { need: 'celiachia', rx: /\bbirra\b/, sub: 'birra senza glutine', note: '' },
+  { need: 'celiachia', rx: /\b(lievito|dado|brodo granulare|cioccolat\w*|wurstel|salsicc\w*|insaccat\w*|prosciutto cotto|mortadell\w*|salame)\b/, sub: null, note: 'scegli un prodotto con la spiga barrata o "senza glutine" in etichetta' },
+  // allergia al latte (diversa dall'intolleranza: niente prodotti delattosati)
+  { need: 'latte', rx: /(?<!al )\blatte\b(?! di (cocco|mandorl|soia|riso|avena))/, sub: 'bevanda vegetale (avena o soia)', note: 'per l\'allergia NON basta il latte senza lattosio' },
+  { need: 'latte', rx: /\bburro\b(?! di (arachidi|cacao))/, sub: 'margarina vegetale o olio', note: 'olio: ¾ della dose' },
+  { need: 'latte', rx: /\bpanna\b/, sub: 'panna vegetale', note: '' },
+  { need: 'latte', rx: /\b(yogurt)\b/, sub: 'yogurt vegetale', note: '' },
+  { need: 'glutine', alias: 'celiachia' },
+  // frutta a guscio, arachidi, sesamo, uova
+  { need: 'frutta a guscio', rx: /\b(noci|nocciol\w*|mandorl\w*|pistacch\w*|anacard\w*|pinoli|noci pecan)\b/, sub: 'semi di girasole o di zucca', note: 'oppure togli l\'ingrediente' },
+  { need: 'arachidi', rx: /\barachid\w*\b/, sub: 'semi di girasole', note: '' },
+  { need: 'sesamo', rx: /\b(sesamo|tahin\w*)\b/, sub: 'semi di girasole (o ometti)', note: '' },
+  { need: 'uova', rx: /\b(uov[oa]|tuorl\w*|album\w*)\b/, sub: null, note: 'nei dolci: 1 uovo = 50 g di yogurt (vegetale se serve) o 3 cucchiai di aquafaba; nelle polpette usa pane ammollato' },
+  { need: 'soia', rx: /\b(soia|tofu|edamame|miso|tempeh)\b/, sub: null, note: 'sostituisci o ometti: contiene soia' },
+  // vegani / vegetariani
+  { need: 'vegano', rx: /(?<!al )\blatte\b(?! di (cocco|mandorl|soia|riso|avena))/, sub: 'bevanda vegetale', note: '' },
+  { need: 'vegano', rx: /\bburro\b(?! di (arachidi|cacao))/, sub: 'margarina vegetale o olio', note: '' },
+  { need: 'vegano', rx: /\bmiele\b/, sub: 'sciroppo d\'acero o d\'agave', note: '' },
+  { need: 'vegano', rx: /\b(uov[oa]|tuorl\w*)\b/, sub: null, note: 'nei dolci: 50 g di yogurt vegetale o 3 cucchiai di aquafaba per uovo' },
+  { need: 'vegano', rx: /\b(parmigian\w*|grana|pecorino|mozzarell\w*|ricotta|formagg\w*)\b/, sub: 'alternativa vegetale (o lievito alimentare in scaglie)', note: '' },
+  { need: 'vegetariano', rx: /\b(guancial\w*|pancett\w*|prosciutt\w*|speck|salsicc\w*|carne|macinat\w*|manzo|vitell\w*|maial\w*|pollo|tacchin\w*|acciug\w*|alici|tonno)\b/, sub: null, note: 'per i vegetariani: sostituisci (es. funghi, verdure grigliate, legumi, tofu affumicato) o ometti' },
+  { need: 'vegano', rx: /\b(guancial\w*|pancett\w*|prosciutt\w*|speck|salsicc\w*|carne|macinat\w*|manzo|vitell\w*|maial\w*|pollo|tacchin\w*|acciug\w*|alici|tonno)\b/, sub: null, note: 'sostituisci (funghi, verdure, legumi, tofu affumicato) o ometti' },
+  // diabete
+  { need: 'diabete', rx: /\bzucchero\b(?! a velo)/, sub: 'eritritolo o dolcificante adatto alla cottura', note: 'oppure dimezza lo zucchero; chiedi al diabetologo' },
+  { need: 'diabete', rx: /\bfarina 00\b/, sub: 'farina integrale o metà farina di mandorle', note: 'abbassa l\'indice glicemico' }
+];
+const NEED_LABEL = { lattosio: 'Lattosio', celiachia: 'Celiachia', latte: 'Allergia al latte', 'frutta a guscio': 'Frutta a guscio', arachidi: 'Arachidi', sesamo: 'Sesamo', uova: 'Uova', soia: 'Soia', vegano: 'Vegani', vegetariano: 'Vegetariani', diabete: 'Diabete' };
+function activeNeedKeys(n) {
+  const k = new Set();
+  ['lattosio', 'celiachia', 'vegano', 'vegetariano', 'diabete'].forEach((x) => { if (n[x]) k.add(x); });
+  n.allergie.forEach((a) => k.add(a === 'glutine' ? 'celiachia' : a));
+  if (k.has('vegano')) k.delete('vegetariano');
+  return k;
+}
+function subsFor(r) {
+  const n = recipeNeeds(r); const keys = activeNeedKeys(n); const out = {};
+  if (!keys.size) return out;
+  const add = (id, x) => { const l = (out[id] = out[id] || []); if (!l.some((y) => y.need === x.need)) l.push(x); };
+  // prima quelle del nutrizionista (più precise per questa ricetta)
+  const ai = r.nutrition && r.nutrition.data && Array.isArray(r.nutrition.data.subs) ? r.nutrition.data.subs : [];
+  ai.forEach((x) => {
+    if (!x || !x.ingredient) return;
+    const ing = matchIngredient(r, x.ingredient); if (!ing) return;
+    const need = normTxt(x.for || '').includes('lattos') ? 'lattosio' : normTxt(x.for || '').includes('celia') || normTxt(x.for || '').includes('glut') ? 'celiachia' : (x.for || 'ospiti');
+    add(ing.id, { need, sub: x.replace || null, note: x.note || '', src: 'ai' });
+  });
+  allIngredients(r).forEach((i) => {
+    const t = ' ' + normTxt(i.name + ' ' + (i.prep || '')).replace(/brisee/g, 'brisée') + ' ';
+    if (ALREADY_OK.test(t)) return;
+    SUBS_RULES.forEach((rule) => {
+      if (!rule.rx || !keys.has(rule.need)) return;
+      const m = t.match(rule.rx); if (!m) return;
+      add(i.id, { need: rule.need, sub: typeof rule.sub === 'function' ? rule.sub(m) : rule.sub, note: rule.note, src: 'auto' });
+    });
+  });
+  return out;
+}
+function subsHtml(list) {
+  if (!list || !list.length) return '';
+  return list.map((x) => `<span class="subn"><b>${esc(NEED_LABEL[x.need] || cap(x.need))}:</b> ${x.sub ? `usa <b>${esc(x.sub)}</b>` : ''}${x.sub && x.note ? ' · ' : ''}${x.note ? esc(x.note) : ''}</span>`).join('');
 }
 function profileConflicts(r) {
   const pr = recipeNeeds(r); const al = detectAllergens(r); const out = [];
@@ -1745,11 +1855,12 @@ Rispondi SOLO con JSON:
  "allergens": [{"name": "uno dei 14 allergeni UE in italiano: glutine, crostacei, uova, pesce, arachidi, soia, latte, frutta a guscio, sedano, senape, sesamo, solfiti, lupini, molluschi", "status": "contiene|tracce", "from": "ingredienti responsabili"}],
  "suitableFor": {"celiaci": false, "intolleranti al lattosio": false, "vegetariani": true, "vegani": false},
  "guestAdvice": "se sono indicate esigenze degli ospiti: cosa cambiare in QUESTA ricetta perché vada bene per tutti (sostituzioni con dosi), altrimenti stringa vuota",
+ "subs": [{"ingredient": "nome dell'ingrediente come scritto nella ricetta", "replace": "con cosa sostituirlo (es. latte senza lattosio)", "note": "dose o accorgimento pratico", "for": "esigenza: lattosio|celiachia|vegani|vegetariani|diabete|allergia: ..."}],
  "costEuro": 14.5, "costLevel": 2, "costNote": "cosa pesa di più sul costo, in breve",
  "swaps": {"healthy": "come renderla più leggera", "glutenFree": "come farla senza glutine, o stringa vuota se già lo è", "lactoseFree": "come farla senza lattosio, o stringa vuota se già lo è"},
  "assumptions": ["ipotesi fatte"]
 }
-Valori in grammi (sale in grammi, energia in kcal) arrotondati a 1 decimale. "costEuro" = spesa totale stimata per TUTTA la ricetta (le porzioni indicate) ai prezzi medi di un supermercato italiano; "costLevel" 1 economica (meno di 3 € a persona), 2 media (3-7 €), 3 costosa (oltre 7 €). "tracce" per prodotti confezionati che spesso le contengono (es. cioccolato: latte, frutta a guscio, soia). Sii concreto e onesto: sono stime.`;
+In "subs" metti una voce per OGNI ingrediente da sostituire per le esigenze indicate (vuoto se non ce ne sono): sostituti facili da trovare in un supermercato italiano, con le eventuali correzioni di dose. Valori in grammi (sale in grammi, energia in kcal) arrotondati a 1 decimale. "costEuro" = spesa totale stimata per TUTTA la ricetta (le porzioni indicate) ai prezzi medi di un supermercato italiano; "costLevel" 1 economica (meno di 3 € a persona), 2 media (3-7 €), 3 costosa (oltre 7 €). "tracce" per prodotti confezionati che spesso le contengono (es. cioccolato: latte, frutta a guscio, soia). Sii concreto e onesto: sono stime.`;
 async function computeNutrition(r) {
   const ings = r.components.map((c) => (c.name ? c.name + ':\n' : '') + c.ingredients.map((i) => '- ' + [i.qty != null ? fmtQty(i.qty, i.unit) : '', unitLabel(i.unit, i.qty), i.name].filter(Boolean).join(' ') + (i.prep ? ', ' + i.prep : '') + (i.optional ? ' (facoltativo)' : '')).join('\n')).join('\n');
   const steps = r.phases.flatMap((p) => p.steps.map((s) => s.text)).join(' ').slice(0, 3000);
@@ -1767,22 +1878,36 @@ async function ensureNutrition(id, force) {
 }
 const RI = { kcal: 2000, fat: 70, satFat: 20, carbs: 260, sugars: 90, protein: 50, salt: 6, fiber: 25 };
 function n1(x) { return x == null || isNaN(x) ? '—' : String(Math.round(x * 10) / 10).replace('.', ','); }
+function adaptBoxHtml(r) {
+  const subs = subsFor(r); const ids = Object.keys(subs);
+  const conflicts = profileConflicts(r);
+  if (!ids.length && !conflicts.length) return '';
+  const lines = ids.map((id) => { const i = findIng(r, id); return i ? subs[id].filter((x) => x.sub).map((x) => `<li><s>${esc(i.name)}</s> → <b>${esc(x.sub)}</b></li>`).join('') : ''; }).join('');
+  const checks = ids.map((id) => { const i = findIng(r, id); return i ? subs[id].filter((x) => !x.sub).map((x) => `<li><b>${esc(i.name)}</b>: ${esc(x.note)}</li>`).join('') : ''; }).join('');
+  const n = recipeNeeds(r);
+  return `<div class="adapt"><div class="adapt-h">${ic('alert')}<b>Adattata per: ${esc(needsList(n).join(', '))}</b>${needsInherited(r) ? '<span class="small dim"> (esigenze di casa)</span>' : ''}</div>
+    ${lines ? `<p class="small" style="margin:6px 0 2px">Al posto di:</p><ul>${lines}</ul>` : ''}
+    ${checks ? `<p class="small" style="margin:6px 0 2px">Attenzione a:</p><ul>${checks}</ul>` : ''}
+    ${!lines && !checks && conflicts.length ? `<p class="small" style="margin:6px 0 0">${esc(conflicts.join(' · '))}</p>` : ''}
+    <p class="small dim" style="margin:6px 0 0">Trovi la nota anche accanto a ogni ingrediente e nei passaggi. La lista della spesa usa già i sostituti.${r.nutrition && r.nutrition.data && r.nutrition.data.subs ? '' : AI.has() ? ' Il nutrizionista aggiunge consigli più precisi quando calcola i valori.' : ''}</p></div>`;
+}
 function needsBarHtml(r) {
   const n = recipeNeeds(r); const l = needsList(n);
-  return `<button class="needsbar" data-act="needs" data-id="${r.id}">${ic('users')}<span><b>Esigenze a tavola:</b> ${l.length ? esc(l.join(', ')) : '<span class="dim">nessuna</span>'}${n.note ? ` <span class="dim">· ${esc(n.note)}</span>` : ''}</span><span class="ed">${ic('edit')}</span></button>`;
+  return `<button class="needsbar" data-act="needs" data-id="${r.id}">${ic('users')}<span><b>Esigenze a tavola:</b> ${l.length ? esc(l.join(', ')) : '<span class="dim">nessuna</span>'}${needsInherited(r) ? ' <span class="dim">(di casa)</span>' : ''}${n.note ? ` <span class="dim">· ${esc(n.note)}</span>` : ''}</span><span class="ed">${ic('edit')}</span></button>`;
 }
 function getRecipe(id) { return S.recipes.find((x) => x.id === id) || (S.draft && S.draft.id === id ? S.draft : null); }
 function openNeeds(id) {
   const r = getRecipe(id); if (!r) return;
   const n = recipeNeeds(r);
   const m = openModal('Esigenze a tavola', `
-    <p class="small dim" style="margin-top:0">Chi mangia questa ricetta? Vale solo per questa ricetta: l'app ti avvisa se qualcosa non va bene e il nutrizionista ti dice come adattarla.</p>
+    <p class="small dim" style="margin-top:0">Chi mangia questa ricetta? L'app ti dice cosa sostituire, ingrediente per ingrediente.${needsList(houseNeeds()).length ? ' Se non cambi niente valgono le <b>esigenze di casa</b> (Altro).' : ''}</p>
     <div class="chips" id="ndFlags">${NEEDS_FLAGS.map(([k, l]) => `<span class="chip ${n[k] ? 'on' : ''}" data-k="${k}">${l}</span>`).join('')}</div>
     <h3 style="margin-top:14px">Allergie</h3>
     <div class="chips" id="ndAl">${ALLERGENS.map(([k]) => `<span class="chip ${n.allergie.includes(k) ? 'on' : ''}" data-v="${esc(k)}">${esc(k)}</span>`).join('')}</div>
     <h3 style="margin-top:14px">Note sugli ospiti</h3>
     <input type="text" id="ndNote" value="${esc(n.note)}" placeholder="Es. Marco celiaco, la nonna senza sale, 2 bambini">
-    <div class="row" style="margin-top:14px"><button class="btn grow" id="ndClear">Nessuna esigenza</button><button class="btn primary grow" id="ndSave">${ic('check')} Salva</button></div>`, (m) => {
+    <div class="row" style="margin-top:14px"><button class="btn grow" id="ndClear">Nessuna esigenza</button><button class="btn primary grow" id="ndSave">${ic('check')} Salva</button></div>
+    ${r.diners && needsList(houseNeeds()).length ? `<button class="btn ghost block" style="margin-top:8px" id="ndHouse">Usa le esigenze di casa</button>` : ''}`, (m) => {
     $$('#ndFlags .chip, #ndAl .chip', m).forEach((c) => (c.onclick = () => c.classList.toggle('on')));
     const save = async (clear) => {
       const d = { allergie: [], note: '' };
@@ -1790,8 +1915,9 @@ function openNeeds(id) {
       r.diners = d;
       if (S.recipes.some((x) => x.id === r.id)) await DB.put(r);
       closeModal(); rerenderRecipe(r.id);
-      if (AI.has() && r.nutrition && !nutriFresh(r) && S.recipes.some((x) => x.id === r.id)) ensureNutrition(r.id);
+      if (AI.has() && !nutriFresh(r) && (r.nutrition || needsList(recipeNeeds(r)).length) && S.recipes.some((x) => x.id === r.id)) ensureNutrition(r.id);
     };
+    const hb = $('#ndHouse', m); if (hb) hb.onclick = async () => { delete r.diners; if (S.recipes.some((x) => x.id === r.id)) await DB.put(r); closeModal(); rerenderRecipe(r.id); if (AI.has() && !nutriFresh(r) && S.recipes.some((x) => x.id === r.id)) ensureNutrition(r.id); };
     $('#ndSave', m).onclick = () => save(false);
     $('#ndClear', m).onclick = () => save(true);
   });
@@ -2250,19 +2376,21 @@ function servingsCtl(r, v, act) {
 function scaleOf(r, v) { return (v.servings || r.servings.amount) / (r.servings.amount || 1); }
 const PLURAL = { foglia: 'foglie', fetta: 'fette', spicchio: 'spicchi', cucchiaio: 'cucchiai', cucchiaino: 'cucchiaini', tazza: 'tazze', mazzetto: 'mazzetti', pizzico: 'pizzichi' };
 function unitLabel(unit, q) { return unit && q > 1.01 && PLURAL[unit] ? PLURAL[unit] : unit; }
-function ingLine(i, k) {
+function ingLine(i, k, subs) {
   const q = i.qty != null ? fmtQty(i.qty * k, i.unit) : '';
   const unit = i.unit && !(i.unit === 'pz' && q) ? unitLabel(i.unit, i.qty * k) : '';
-  return `<span class="qty">${i.estimated && q ? '<span class="est" title="Dose stimata">≈</span>' : ''}${esc(q)}${q && unit ? ' ' : ''}${esc(unit)}</span>${q || unit ? ' ' : ''}${esc(i.name)}${i.prep ? `<span class="prep">, ${esc(i.prep)}</span>` : ''}${i.optional ? '<span class="opt">facoltativo</span>' : ''}`;
+  return `<span class="qty">${i.estimated && q ? '<span class="est" title="Dose stimata">≈</span>' : ''}${esc(q)}${q && unit ? ' ' : ''}${esc(unit)}</span>${q || unit ? ' ' : ''}${esc(i.name)}${i.prep ? `<span class="prep">, ${esc(i.prep)}</span>` : ''}${i.optional ? '<span class="opt">facoltativo</span>' : ''}${subs && subs.length ? subsHtml(subs) : ''}`;
 }
-function useLine(r, u, k) {
+function useLine(r, u, k, subs) {
   const i = findIng(r, u.ing); if (!i) return '';
   const qv = u.qty != null ? u.qty : i.qty;
   const q = qv != null ? fmtQty(qv * k, i.unit) : '';
   const unit = i.unit && !(i.unit === 'pz' && q) ? unitLabel(i.unit, qv * k) : '';
-  return `<span class="use"><b>${esc(q)}${q && unit ? ' ' : ''}${esc(unit)}</b>${q || unit ? ' ' : ''}${esc(i.name)}</span>`;
+  const sb = subs && subs[i.id] ? subs[i.id].find((x) => x.sub) : null;
+  return `<span class="use ${sb ? 'swapped' : ''}"><b>${esc(q)}${q && unit ? ' ' : ''}${esc(unit)}</b>${q || unit ? ' ' : ''}${sb ? `${esc(sb.sub)} <s>${esc(i.name)}</s>` : esc(i.name)}</span>`;
 }
 function recipeHtml(r, v) {
+  const SUBS = subsFor(r);
   const k = scaleOf(r, v);
   const t = totalMin(r);
   const ings = allIngredients(r);
@@ -2298,7 +2426,7 @@ function recipeHtml(r, v) {
   </div>
   ${r.warnings.length ? `<div class="notice"><b>Da verificare:</b> ${r.warnings.map(esc).join(' · ')}</div>` : ''}
   ${needsBarHtml(r)}
-  ${(() => { const c = profileConflicts(r); return c.length ? `<div class="prof-alert"><b>Attenzione, non va bene per i tuoi ospiti:</b> ${c.map(esc).join(' · ')}. <a href="#" data-act="go-nutri">Vedi alternative</a></div>` : ''; })()}
+  ${adaptBoxHtml(r)}
   ${recipeNeeds(r).diabete && r.nutrition && r.nutrition.data ? `<div class="metarow"><span class="meta-pill">${ic('gauge')} Carboidrati <b>${n1(r.nutrition.data.perPortion.carbs)} g</b> a porzione</span><span class="meta-pill"><b>${Math.round(r.nutrition.data.perPortion.kcal || 0)}</b> kcal</span></div>` : ''}
 
   ${(r.equipment.length || r.critical.length) ? `
@@ -2310,13 +2438,13 @@ function recipeHtml(r, v) {
 
   <div class="sectionhead"><span class="num">${(r.equipment.length || r.critical.length) ? 2 : 1}</span><h2>Ingredienti</h2><span class="aside small dim">${ings.length ? `pronti ${doneIngs}/${ings.length}` : ''}</span></div>
   <div class="card">
-    ${ings.length ? r.components.map((c) => c.ingredients.length ? `${c.name ? `<div class="group-name">${esc(c.name)}</div>` : ''}<ul class="checklist">${c.ingredients.map((i) => `<li class="${v.ings[i.id] ? 'done' : ''}" data-act="chk-ing" data-id="${r.id}" data-i="${i.id}"><span class="box">${ic('check')}</span><span class="t">${ingLine(i, k)}</span></li>`).join('')}</ul>` : '').join('') : '<div class="dim">Nessun ingrediente.</div>'}
+    ${ings.length ? r.components.map((c) => c.ingredients.length ? `${c.name ? `<div class="group-name">${esc(c.name)}</div>` : ''}<ul class="checklist">${c.ingredients.map((i) => `<li class="${v.ings[i.id] ? 'done' : ''}" data-act="chk-ing" data-id="${r.id}" data-i="${i.id}"><span class="box">${ic('check')}</span><span class="t">${ingLine(i, k, SUBS[i.id])}</span></li>`).join('')}</ul>` : '').join('') : '<div class="dim">Nessun ingrediente.</div>'}
     ${ings.length ? `<p class="small dim" style="margin:10px 0 0">Spunta gli ingredienti man mano che li prepari e li metti sul piano: è la tua <i>mise en place</i>.</p>` : ''}
   </div>
 
   <div class="sectionhead"><span class="num">${(r.equipment.length || r.critical.length) ? 3 : 2}</span><h2>Procedimento</h2></div>
   <div class="card">
-    ${r.phases.map((p) => p.steps.length ? `<div class="phase">${p.name ? `<div class="phase-title">${esc(p.name)}</div>` : ''}${p.steps.map((s) => { n++; return stepHtml(r, s, n, k, v); }).join('')}</div>` : '').join('') || '<div class="dim">Nessun passaggio.</div>'}
+    ${r.phases.map((p) => p.steps.length ? `<div class="phase">${p.name ? `<div class="phase-title">${esc(p.name)}</div>` : ''}${p.steps.map((s) => { n++; return stepHtml(r, s, n, k, v, SUBS); }).join('')}</div>` : '').join('') || '<div class="dim">Nessun passaggio.</div>'}
   </div>
 
   ${(r.notes || r.storage) ? `
@@ -2341,12 +2469,14 @@ function videoLink(r, s) {
   if (s.videoAt == null || !r.source.videoId) return '';
   return `<a class="badge video" href="https://www.youtube.com/watch?v=${esc(r.source.videoId)}&t=${Math.round(s.videoAt)}s" target="_blank" rel="noopener">${ic('play')} Guarda (${mmss(s.videoAt)})</a>`;
 }
-function stepHtml(r, s, n, k, v) {
+function stepHtml(r, s, n, k, v, SUBS = {}) {
+  const swaps = s.uses.map((u) => { const i = findIng(r, u.ing); const x = i && SUBS[i.id] && SUBS[i.id].find((y) => y.sub); return x ? 'al posto di ' + i.name + ' usa ' + x.sub : ''; }).filter(Boolean);
   return `<div class="step ${v.steps[s.id] ? 'done' : ''}">
     <span class="stepnum" data-act="chk-step" data-id="${r.id}" data-i="${s.id}" title="Segna come fatto">${n}</span>
     <div class="st">
       <div>${esc(s.text)}</div>
-      ${s.uses.length ? `<div class="uses">${s.uses.map((u) => useLine(r, u, k)).join('')}</div>` : ''}
+      ${s.uses.length ? `<div class="uses">${s.uses.map((u) => useLine(r, u, k, SUBS)).join('')}</div>` : ''}
+      ${swaps.length ? `<div class="stepswap">${ic('alert')} Attenzione: ${esc(swaps.join('; '))}</div>` : ''}
       ${(s.minutes || s.temp || (s.videoAt != null && r.source.videoId)) ? `<div class="badges">
         ${s.minutes ? `<button class="badge timer" data-act="timer" data-min="${s.minutes}" data-label="${esc((r.title + ' · passo ' + n).slice(0, 60))}">${ic('timer')} ${fmtMin(s.minutes)} · avvia timer</button>` : ''}
         ${s.temp ? `<span class="badge">${ic('temp')} ${esc(s.temp)}</span>` : ''}
@@ -2720,11 +2850,14 @@ function buildShopList() {
   const items = new Map();
   plan.forEach(({ p, r }) => {
     const k = (p.servings || r.servings.amount) / (r.servings.amount || 1);
-    allIngredients(r).forEach((i) => {
-      if (!i.name.trim()) return;
+    const subs = subsFor(r);
+    allIngredients(r).forEach((i0) => {
+      if (!i0.name.trim()) return;
+      const sb = subs[i0.id] && subs[i0.id].find((x) => x.sub);
+      const i = sb ? Object.assign({}, i0, { name: sb.sub }) : i0;
       const [cls, mul] = unitClass(i.unit);
       const key = shopKey(i.name) + '|' + (cls === 'qb' ? 'qb' : cls);
-      const it = items.get(key) || { key, name: i.name.trim(), cls, qty: 0, hasQty: false, from: [], optional: true, aisle: shopAisle(i.name) };
+      const it = items.get(key) || { key, name: i.name.trim(), cls, qty: 0, hasQty: false, from: [], optional: true, aisle: shopAisle(i0.name), swapped: sb ? i0.name : '' };
       if (i.qty != null && cls !== 'qb') { it.qty += i.qty * mul * k; it.hasQty = true; }
       if (!it.from.includes(r.title)) it.from.push(r.title);
       if (!i.optional) it.optional = false;
@@ -2789,7 +2922,7 @@ function renderShop(app) {
     ${aisles.map((a) => {
       const its = list.filter((x) => x.aisle === a && !(d.hideDone && d.checked[x.key]));
       if (!its.length) return '';
-      return `<div class="group-name">${esc(a)}</div><ul class="checklist">${its.map((x) => `<li class="${d.checked[x.key] ? 'done' : ''}" data-act="shop-chk" data-k="${esc(x.key)}"><span class="box">${ic('check')}</span><span class="t"><span class="qty">${esc(x.label)}</span> ${esc(x.name)}${x.optional ? '<span class="opt">facoltativo</span>' : ''}${plan.length > 1 ? `<span class="shop-from">${esc(x.from.join(' · '))}</span>` : ''}</span></li>`).join('')}</ul>`;
+      return `<div class="group-name">${esc(a)}</div><ul class="checklist">${its.map((x) => `<li class="${d.checked[x.key] ? 'done' : ''}" data-act="shop-chk" data-k="${esc(x.key)}"><span class="box">${ic('check')}</span><span class="t"><span class="qty">${esc(x.label)}</span> ${esc(x.name)}${x.optional ? '<span class="opt">facoltativo</span>' : ''}${x.swapped ? `<span class="shop-from">al posto di ${esc(x.swapped)}</span>` : ''}${plan.length > 1 ? `<span class="shop-from">${esc(x.from.join(' · '))}</span>` : ''}</span></li>`).join('')}</ul>`;
     }).join('')}
     ${d.extra.filter((x) => !(d.hideDone && x.done)).length ? `<div class="group-name">Aggiunti da te</div><ul class="checklist">${d.extra.map((x, i) => d.hideDone && x.done ? '' : `<li class="${x.done ? 'done' : ''}" data-act="shop-xchk" data-i="${i}"><span class="box">${ic('check')}</span><span class="t">${esc(x.text)}</span><button class="iconbtn sm" data-act="shop-xdel" data-i="${i}" aria-label="Elimina" style="margin-left:auto">${ic('trash')}</button></li>`).join('')}</ul>` : ''}
     ${!list.length && !d.extra.length ? '<div class="dim">La lista è vuota.</div>' : ''}
@@ -3002,7 +3135,7 @@ async function showProduct(p) {
 const SCAN_RULES = `Sei uno chef italiano esperto. Qualcuno è al supermercato con in mano un prodotto e vuole sapere cosa cucinarci. Proponi ricette REALI e collaudate in cui quel prodotto è protagonista, adatte proprio al suo formato/tipo (es. per una pasta corta rigata sughi corposi, per gli spaghetti sughi che avvolgono). Considera la quantità della confezione. Varia le proposte. Per ogni proposta stima anche, in modo onesto e realistico: "kcal" = calorie di UNA porzione; "costEuro" = spesa totale stimata in euro per tutti gli ingredienti (compreso il prodotto), per il numero di persone indicato, ai prezzi medi di un supermercato italiano (dispensa base inclusa a valore pieno); "costLevel" = 1 economica (meno di 3 € a persona), 2 media (3-7 € a persona), 3 costosa (oltre 7 € a persona).
 Per ognuna elenca in "toBuy" SOLO gli ingredienti da comprare, con dose per il numero di persone indicato: escludi il prodotto stesso e la dispensa che la persona ha già.
 Rispondi SOLO con JSON:
-{"ideas":[{"title":"","course":"primo|secondo|contorno|dolce|antipasto|piatto unico","description":"1 frase invitante","minutes":30,"difficulty":"facile|media|impegnativa","productQty":"quanto prodotto usa, es. 320 g","why":"perché è perfetta per questo prodotto","toBuy":[{"name":"guanciale","qty":150,"unit":"g"}],"pantry":["ingredienti di dispensa usati"],"kcal":550,"costEuro":12,"costLevel":2}]}`;
+{"ideas":[{"title":"","course":"primo|secondo|contorno|dolce|antipasto|piatto unico","description":"1 frase invitante","minutes":30,"difficulty":"facile|media|impegnativa","productQty":"quanto prodotto usa, es. 320 g","why":"perché è perfetta per questo prodotto","toBuy":[{"name":"guanciale","qty":150,"unit":"g"}],"pantry":["ingredienti di dispensa usati"],"needsOk":"sostituzioni per le esigenze, o stringa vuota","kcal":550,"costEuro":12,"costLevel":2}]}`;
 async function scanIdeas(more) {
   const sc = scanState(); const p = sc.product; if (!p) return;
   if (more) sc.seen = sc.seen.concat(sc.ideas.map((x) => x.title));
@@ -3013,6 +3146,7 @@ async function scanIdeas(more) {
     'Prodotto: ' + productLabel(p) + (p.type ? ' — ' + p.type : '') + (p.categories ? ' — categorie: ' + p.categories : ''),
     p.ingredients ? 'Ingredienti del prodotto: ' + p.ingredients : '',
     'Persone: ' + sc.people,
+    needsList(houseNeeds()).length ? profileText(houseNeeds()) + ' Puoi proporre anche ricette che si adattano con sostituzioni semplici: scrivile in "needsOk".' : '',
     'Dispensa che ha già in casa: ' + (pantry.join(', ') || 'niente di particolare'),
     sc.notes ? 'Richieste: ' + sc.notes : '',
     'Mese: ' + new Date().toLocaleDateString('it-IT', { month: 'long' }) + ' (ingredienti di stagione)',
@@ -3066,6 +3200,7 @@ function drawScanResult(app) {
       ${ideaBadges(d, sc.people)}
       ${d.description ? `<p style="margin:6px 0 0">${esc(d.description)}</p>` : ''}
       ${d.why ? `<div class="why">${esc(d.why)}</div>` : ''}
+      ${d.needsOk ? `<div class="adapt sm"><b>${ic('alert')} Per le esigenze di casa:</b> ${esc(d.needsOk)}</div>` : ''}
       <div class="tobuy"><b>${d.toBuy.length ? 'Ti serve ancora:' : 'Hai già tutto il resto ✓'}</b>${d.toBuy.length ? `<ul>${d.toBuy.map((t) => `<li>${esc(toBuyLine(t))}</li>`).join('')}</ul>` : ''}${d.pantry && d.pantry.length ? `<div class="small dim">Dalla dispensa: ${esc(d.pantry.join(', '))}</div>` : ''}</div>
       <div class="links">
         ${d.toBuy.length ? `<button class="btn sm ${carted ? '' : 'primary'}" data-act="scan-cart" data-i="${i}" ${carted ? 'disabled' : ''}>${ic(carted ? 'check' : 'cart')} ${carted ? 'Nella lista della spesa' : 'Metti in lista della spesa'}</button>` : ''}
@@ -3162,7 +3297,7 @@ const WZ_DETAILS = {
 const WZ_COOK = ['forno', 'fornelli', 'friggitrice ad aria', 'microonde', 'griglia / barbecue', 'Bimby / robot da cucina', 'pentola a pressione', 'cottura lenta', 'al vapore', 'senza cottura'];
 const WZ_STEP_LABEL = { piatto: 'Che piatto', dettagli: 'Dettagli', occasione: 'Occasione', cottura: 'Cottura', tempo: 'Persone e tempo', richieste: 'Richieste', salute: 'Salute e allergie' };
 function wzState() {
-  if (!S.wz) S.wz = { step: 0, results: false, courses: [], det: {}, event: '', eventOther: '', cook: [], cookStrict: false, people: settings.get('fr_people', 4), time: 60, difficulty: 'qualsiasi', wishes: [], notes: '', needs: Object.assign({}, NEEDS_DEFAULT, { allergie: [] }), count: 5, ideas: [], seen: [], added: {}, busy: {} };
+  if (!S.wz) S.wz = { step: 0, results: false, courses: [], det: {}, event: '', eventOther: '', cook: [], cookStrict: false, people: settings.get('fr_people', 4), time: 60, difficulty: 'qualsiasi', wishes: [], notes: '', needs: clone(houseNeeds()), count: 5, ideas: [], seen: [], added: {}, busy: {} };
   return S.wz;
 }
 function wzSteps(w) { return ['piatto'].concat(w.courses.some((c) => WZ_DETAILS[c]) ? ['dettagli'] : [], ['occasione', 'cottura', 'tempo', 'richieste', 'salute']); }
@@ -3233,9 +3368,9 @@ function renderWizard(app) {
 function wzSummary(w) {
   return [w.courses.length ? w.courses.join(', ') : 'qualsiasi portata'].concat(wzDetailText(w).map((x) => x.split(' — ')[1]), [[w.event, w.eventOther].filter(Boolean).join(' – ') || 'nessuna occasione particolare'], w.cook.length ? [(w.cookStrict ? 'solo ' : '') + w.cook.join(', ')] : [], [w.people + ' persone', w.time >= 240 ? 'tempo senza limiti' : 'max ' + fmtMin(w.time), 'difficoltà ' + w.difficulty]).concat(w.wishes).concat(needsList(w.needs)).join(' · ');
 }
-const WZ_RULES = `Sei uno chef italiano esperto che aiuta un cuoco casalingo appassionato (senza scuola di cucina) a scegliere cosa cucinare. Proponi ricette REALI e collaudate, adatte all'occasione, alla stagione, al tempo e alle esigenze indicate. Rispetta con precisione i dettagli chiesti per ogni portata (base, condimento, protagonista, taglio, tipo di dolce, gusto) e i metodi di cottura indicati; se ci sono più portate, distribuisci le proposte tra le portate. Se ci sono esigenze di salute o allergie, ogni proposta deve già rispettarle (scegli piatti naturalmente adatti o indica la versione adatta). Varia le proposte. Per ogni proposta stima anche, in modo onesto e realistico: "kcal" = calorie di UNA porzione; "costEuro" = spesa totale stimata in euro per tutti gli ingredienti, per il numero di persone indicato, ai prezzi medi di un supermercato italiano (dispensa base inclusa a valore pieno); "costLevel" = 1 economica (meno di 3 € a persona), 2 media (3-7 € a persona), 3 costosa (oltre 7 € a persona).
+const WZ_RULES = `Sei uno chef italiano esperto che aiuta un cuoco casalingo appassionato (senza scuola di cucina) a scegliere cosa cucinare. Proponi ricette REALI e collaudate, adatte all'occasione, alla stagione, al tempo e alle esigenze indicate. Rispetta con precisione i dettagli chiesti per ogni portata (base, condimento, protagonista, taglio, tipo di dolce, gusto) e i metodi di cottura indicati; se ci sono più portate, distribuisci le proposte tra le portate. Se ci sono esigenze di salute, intolleranze o allergie, puoi proporre anche ricette che normalmente non le rispettano, purché si adattino bene con sostituzioni semplici (es. latte senza lattosio, mix di farine senza glutine): in "needsOk" scrivi le sostituzioni da fare; escludi solo i piatti che non si possono adattare. Varia le proposte. Per ogni proposta stima anche, in modo onesto e realistico: "kcal" = calorie di UNA porzione; "costEuro" = spesa totale stimata in euro per tutti gli ingredienti, per il numero di persone indicato, ai prezzi medi di un supermercato italiano (dispensa base inclusa a valore pieno); "costLevel" = 1 economica (meno di 3 € a persona), 2 media (3-7 € a persona), 3 costosa (oltre 7 € a persona).
 Rispondi SOLO con JSON:
-{"ideas":[{"title":"","course":"antipasto|primo|secondo|contorno|piatto unico|dolce|aperitivo","description":"1-2 frasi invitanti","minutes":45,"difficulty":"facile|media|impegnativa","why":"perché è adatta a questa occasione e a questi ospiti","needsOk":"come rispetta le esigenze indicate, o stringa vuota se non ce ne sono","mainIngredients":["ingrediente principale"],"searchQuery":"titolo breve da cercare","kcal":550,"costEuro":12,"costLevel":2}]}`;
+{"ideas":[{"title":"","course":"antipasto|primo|secondo|contorno|piatto unico|dolce|aperitivo","description":"1-2 frasi invitanti","minutes":45,"difficulty":"facile|media|impegnativa","why":"perché è adatta a questa occasione e a questi ospiti","needsOk":"sostituzioni da fare per le esigenze (es. latte → latte senza lattosio), o stringa vuota se non servono","mainIngredients":["ingrediente principale"],"searchQuery":"titolo breve da cercare","kcal":550,"costEuro":12,"costLevel":2}]}`;
 function wzPrompt(w) {
   const month = new Date().toLocaleDateString('it-IT', { month: 'long' });
   return [
@@ -3284,7 +3419,7 @@ function drawWzResults(app) {
         ${ideaBadges(d, w.people)}
         ${d.description ? `<p style="margin:6px 0 0">${esc(d.description)}</p>` : ''}
         ${d.why ? `<div class="why">${esc(d.why)}</div>` : ''}
-        ${d.needsOk ? `<div class="miss" style="color:var(--ok)"><b>✓</b> ${esc(d.needsOk)}</div>` : ''}
+        ${d.needsOk ? `<div class="adapt sm"><b>${ic('alert')} Per i tuoi ospiti:</b> ${esc(d.needsOk)}</div>` : ''}
         ${added ? `<div class="small" style="margin-top:8px;color:var(--ok)"><b>Aggiunta al ricettario.</b> <a href="#/r/${enc(added)}">Aprila</a></div>` : busy ? `<div class="small dim" style="margin-top:8px">Scrivo la ricetta completa e la salvo…</div>` : ''}
         <div class="links">
           <a class="btn sm ghost" target="_blank" rel="noopener" href="https://www.giallozafferano.it/ricerca-ricette/${enc(d.searchQuery || d.title)}/">GialloZafferano</a>
@@ -3303,7 +3438,7 @@ async function wzAdd(i) {
 ${wzDetailText(w).length ? 'Richieste per le portate: ' + wzDetailText(w).join('; ') + '. ' : ''}${wzCookText(w) ? wzCookText(w) + '. ' : ''}
 Occasione: ${[w.event, w.eventOther].filter(Boolean).join(' – ') || 'pasto qualsiasi'}. Persone: ${w.people}. Tempo massimo: ${w.time >= 240 ? 'senza limiti' : w.time + ' minuti'}. Difficoltà: ${w.difficulty}.
 ${w.wishes.length ? 'Richieste: ' + w.wishes.join(', ') + '. ' : ''}${w.notes ? 'Note: ' + w.notes + '. ' : ''}
-${profileText(w.needs)} La ricetta deve già rispettare queste esigenze.
+${profileText(w.needs)} Scrivi la versione classica del piatto con gli ingredienti originali: le sostituzioni per queste esigenze le indica l'app accanto a ogni ingrediente.
 Usa la versione classica e collaudata del piatto. "servings" deve essere ${w.people}.`;
     const res = await AI.generate({ system: RECIPE_RULES, parts: [{ text }], temperature: 0.4 });
     if (!res.data || res.data.notARecipe) throw new Error('Non sono riuscito a scrivere la ricetta, riprova.');
@@ -3393,6 +3528,7 @@ function drawIdeas(loading) {
         ${d.description ? `<p style="margin:6px 0 0">${esc(d.description)}</p>` : ''}
         ${d.missing && d.missing.length ? `<div class="miss"><b style="color:var(--warn)">Ti manca:</b> ${d.missing.map(esc).join(', ')}</div>` : `<div class="miss" style="color:var(--ok)"><b>Hai tutto ✓</b></div>`}
         ${d.why ? `<div class="why">${esc(d.why)}</div>` : ''}
+        ${d.needsOk ? `<div class="adapt sm"><b>${ic('alert')} Per le esigenze di casa:</b> ${esc(d.needsOk)}</div>` : ''}
         <div class="links">
           <button class="btn sm primary" data-act="fr-make" data-i="${i}">${ic('chef')} Fammi la ricetta</button>
           ${d.sourceUrl && /^https?:/.test(d.sourceUrl) ? `<a class="btn sm" href="${esc(d.sourceUrl)}" target="_blank" rel="noopener">${ic('link')} Ricetta trovata</a><button class="btn sm ghost" data-act="fr-import" data-i="${i}">Importa quella</button>` : ''}
@@ -3450,6 +3586,7 @@ function exitCook(silent) {
 }
 function drawCook() {
   const c = S.cook; const { r, v, flat } = c; const k = scaleOf(r, v);
+  const cookSubs = subsFor(r);
   const total = flat.length + 2; // mise en place + passaggi + fine
   let el = $('#cook');
   if (!el) { el = document.createElement('div'); el.className = 'cook'; el.id = 'cook'; document.body.appendChild(el); bindSwipe(el); }
@@ -3458,19 +3595,19 @@ function drawCook() {
     label = 'Mise en place';
     body = `<div class="phase-l">Prima di accendere il fuoco</div>
       <div class="big">Prepara tutto sul piano di lavoro.</div>
-      ${(() => { const cf = profileConflicts(r); return cf.length ? `<div class="prof-alert" style="margin-bottom:12px"><b>Occhio agli ospiti:</b> ${cf.map(esc).join(' · ')}</div>` : ''; })()}
+      ${(() => { const ids = Object.keys(cookSubs); if (ids.length) return `<div class="adapt sm" style="margin:0 0 12px"><b>${ic('alert')} Adattata per ${esc(needsList(recipeNeeds(r)).join(', '))}:</b> ${esc(ids.map((id) => { const i = findIng(r, id); const x = cookSubs[id].find((y) => y.sub); return i && x ? i.name + ' → ' + x.sub : ''; }).filter(Boolean).join('; ') || 'controlla le note sotto gli ingredienti')}</div>`; const cf = profileConflicts(r); return cf.length ? `<div class="prof-alert" style="margin-bottom:12px"><b>Occhio agli ospiti:</b> ${cf.map(esc).join(' · ')}</div>` : ''; })()}
       ${r.equipment.length ? `<h3>Attrezzatura</h3><ul class="checklist">${r.equipment.map((e, i) => `<li class="${v.eq[i] ? 'done' : ''}" data-act="ck-eq" data-i="${i}"><span class="box">${ic('check')}</span><span class="t">${esc(e)}</span></li>`).join('')}</ul>` : ''}
       <h3 style="margin-top:14px">Per quante ${/^(persone|porzioni)$/i.test(r.servings.unit) ? r.servings.unit : 'porzioni'} cucini?</h3>
       <div style="margin-bottom:10px">${servingsCtl(r, v, 'ck-serv')}</div>
       <h3 style="margin-top:14px">Ingredienti ${k !== 1 ? `<span class="small dim">(per ${fmtQty(v.servings, 'pz')} ${esc(r.servings.unit)})</span>` : ''}</h3>
-      ${r.components.map((cp) => cp.ingredients.length ? `${cp.name ? `<div class="group-name">${esc(cp.name)}</div>` : ''}<ul class="checklist">${cp.ingredients.map((i) => `<li class="${v.ings[i.id] ? 'done' : ''}" data-act="ck-ing" data-i="${i.id}"><span class="box">${ic('check')}</span><span class="t">${ingLine(i, k)}</span></li>`).join('')}</ul>` : '').join('')}
+      ${r.components.map((cp) => cp.ingredients.length ? `${cp.name ? `<div class="group-name">${esc(cp.name)}</div>` : ''}<ul class="checklist">${cp.ingredients.map((i) => `<li class="${v.ings[i.id] ? 'done' : ''}" data-act="ck-ing" data-i="${i.id}"><span class="box">${ic('check')}</span><span class="t">${ingLine(i, k, cookSubs[i.id])}</span></li>`).join('')}</ul>` : '').join('')}
       ${r.critical.length ? `<h3 style="margin-top:14px">Occhio a…</h3><div class="critical">${r.critical.map((x) => `<div class="crit"><div class="p">${ic('alert')}<span>${esc(x.problem)}</span></div>${x.fix ? `<div class="fx"><b>Rimedio:</b> ${esc(x.fix)}</div>` : ''}</div>`).join('')}</div>` : ''}`;
   } else if (c.i <= flat.length) {
     const { phase, s } = flat[c.i - 1];
     label = 'Passo ' + c.i + ' di ' + flat.length;
     body = `${phase ? `<div class="phase-l">${esc(phase)}</div>` : ''}
       <div class="big">${esc(s.text)}</div>
-      ${s.uses.length ? `<div class="uses" style="display:flex;flex-wrap:wrap;gap:8px;font-size:1.05rem">${s.uses.map((u) => useLine(r, u, k)).join('')}</div>` : ''}
+      ${s.uses.length ? `<div class="uses" style="display:flex;flex-wrap:wrap;gap:8px;font-size:1.05rem">${s.uses.map((u) => useLine(r, u, k, cookSubs)).join('')}</div>` : ''}
       <div class="badges" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
         ${s.minutes ? `<button class="btn primary" data-act="timer" data-min="${s.minutes}" data-label="${esc(('Passo ' + c.i + ': ' + s.text).slice(0, 60))}">${ic('timer')} Avvia timer ${fmtMin(s.minutes)}</button>` : ''}
         ${s.temp ? `<span class="badge" style="font-size:1rem;padding:8px 12px">${ic('temp')} ${esc(s.temp)}</span>` : ''}
@@ -3572,8 +3709,14 @@ function renderSettings(app) {
   </div>
 
   <div class="card stack" style="margin-top:16px">
+    <h2>Esigenze di casa</h2>
+    <p class="small dim" style="margin:0">Se in casa c'è un'intolleranza o un'allergia, segnala qui: tutte le ricette (salvate, importate, proposte) ti diranno cosa sostituire, e la lista della spesa userà già i sostituti. Puoi sempre cambiarle per una singola ricetta con "Esigenze a tavola".</p>
+    ${(() => { const h = houseNeeds(); return `<div class="chips">${NEEDS_FLAGS.map(([k, l]) => `<span class="chip ${h[k] ? 'on' : ''}" data-act="house-flag" data-k="${k}">${l}</span>`).join('')}</div>
+    <div><h3 style="margin:6px 0">Allergie</h3><div class="chips">${ALLERGENS.map(([k]) => `<span class="chip ${h.allergie.includes(k) ? 'on' : ''}" data-act="house-al" data-v="${esc(k)}">${esc(k)}</span>`).join('')}</div></div>`; })()}
+  </div>
+
+  <div class="card stack" style="margin-top:16px">
     <h2>Nutrizionista</h2>
-    <p class="small dim" style="margin:0">Le esigenze alimentari (diabete, celiachia, allergie…) si impostano in ogni ricetta, con "Esigenze a tavola", perché cambiano a seconda degli ospiti.</p>
     <div class="row"><label for="kcalIn" class="grow" style="font-weight:600">Fabbisogno di riferimento (kcal/giorno)</label><input type="number" id="kcalIn" min="1000" max="5000" step="50" value="${kcalRef()}" style="width:110px"></div>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="autoNutri" ${settings.get('auto_nutri', true) ? 'checked' : ''}> Calcola i valori nutrizionali in automatico quando salvo una ricetta</label>
   </div>
@@ -3725,6 +3868,8 @@ const ACT = {
   'nutri': (a) => ensureNutrition(a.dataset.id, true),
   'go-nutri': () => { const el = $('#nutri-sec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
   'needs': (a) => openNeeds(a.dataset.id),
+  'house-flag': (a) => { const h = houseNeeds(); h[a.dataset.k] = !h[a.dataset.k]; settings.set('house_needs', h); a.classList.toggle('on'); S.wz = null; },
+  'house-al': (a) => { const h = houseNeeds(); const v = a.dataset.v; h.allergie = h.allergie.includes(v) ? h.allergie.filter((x) => x !== v) : h.allergie.concat(v); settings.set('house_needs', h); a.classList.toggle('on'); S.wz = null; },
   'ck-serv': (a) => { const v = S.cook.v; v.servings = Math.max(1, Math.min(200, Math.round(v.servings || 1) + +a.dataset.d)); drawCook(); },
   'chk-ing': (a) => { const v = S.view[a.dataset.id]; v.ings[a.dataset.i] = !v.ings[a.dataset.i]; rerenderRecipe(a.dataset.id); },
   'chk-eq': (a) => { const v = S.view[a.dataset.id]; v.eq[a.dataset.i] = !v.eq[a.dataset.i]; rerenderRecipe(a.dataset.id); },

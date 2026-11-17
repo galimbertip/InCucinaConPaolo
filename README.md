@@ -12,6 +12,7 @@ Ricettario personale in formato unico, installabile come app.
 - **Svuota frigo**: ingredienti, strumenti, tempo e persone → idee, con "Altre idee" e "Fammi la ricetta"
 - **Modalità cucina**: un passaggio per schermata, timer, schermo sempre acceso, pulsante "Aiuto!"
 - **Nutrizionista**: valori a porzione e per 100 g, % giornaliera, quanto mangiarne (pasto/spuntino), sezione diabetici (carboidrati, indice e carico glicemico), 14 allergeni UE, avvisi e alternative
+- **Sostituzioni per intolleranze e allergie**: qualsiasi ricetta mostra accanto a ogni ingrediente cosa usare al suo posto (es. latte → latte senza lattosio, farina → mix senza glutine), con avvisi nei passaggi; la lista della spesa usa già i sostituti; **esigenze di casa** in Altro valide per tutte le ricette
 - **Esigenze a tavola** per ogni ricetta: diabete, celiachia, lattosio, vegetariani/vegani, allergie e note sugli ospiti
 - **Controllo dosi**: dopo la conversione AI le quantità vengono verificate sul testo originale
 - **Raccolte di ricette**: se un link contiene più ricette, scegli quale importare
