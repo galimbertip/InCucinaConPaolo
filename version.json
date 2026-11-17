@@ -1,9 +1,9 @@
 {
-  "version": "1.10.1",
+  "version": "1.11.0",
   "date": "17 novembre 2026",
   "items": [
-    "Ricerca di ricette molto più veloce: l'AI usa un ragionamento breve (basta per idee e ricette) e l'app sceglie i modelli Gemini stabili prima di quelli in anteprima, più lenti e intasati.",
-    "Mai più attese di minuti: ogni ricerca ha un tempo massimo; se un modello è lento l'app passa al successivo e se lo ricorda per qualche ora.",
-    "Durante la ricerca vedi i secondi trascorsi e puoi annullare. Nel registro delle richieste AI (Altro) compare anche quanto ha impiegato ogni risposta."
+    "Ogni proposta (Cosa cucino?, Svuota frigo, Scansiona) mostra le calorie a porzione e quanto costa: € economica, €€ spesa media, €€€ costosa, con la spesa totale stimata e quella a testa.",
+    "Puoi ordinare le proposte per meno calorie, più economiche o più veloci.",
+    "Le ricette salvate mostrano calorie e costo stimato sotto il titolo e nel ricettario; il costo segue il numero di persone che scegli. Il nutrizionista ora calcola anche il costo e dice cosa pesa di più sulla spesa."
   ]
 }

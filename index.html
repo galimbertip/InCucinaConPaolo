@@ -3,6 +3,10 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.11.0 — 17 novembre 2026
+    - Calorie a porzione e indicatore di spesa (€/€€/€€€ + costo stimato)
+      sulle proposte, ordinamento, stima nelle ricette e nel nutrizionista.
+
   v1.10.1 — 17 novembre 2026
     - AI veloce: thinkingLevel low / thinkingBudget 0, modelli stabili prima
       delle anteprime, scadenza totale 110 s, modelli lenti in fondo per 6 h,
@@ -276,6 +280,7 @@ textarea{min-height:80px;resize:vertical;line-height:1.45}
 .rcard .ph .noimg svg{width:44px;height:44px}
 .rcard .bd{padding:10px 12px 12px}
 .rcard h3{font-size:.98rem;line-height:1.2;margin:0 0 6px}
+.rcard .m .cl{font-weight:700;font-family:"Space Grotesk",system-ui,sans-serif} .rcard .m .cl.c1{color:var(--ok)} .rcard .m .cl.c2{color:var(--warn)} .rcard .m .cl.c3{color:var(--bad)}
 .rcard .m{font-size:.78rem;color:var(--dim);display:flex;gap:8px;flex-wrap:wrap}
 
 /* Recipe view */
@@ -432,6 +437,17 @@ table.nutri tr.sub td:first-child{padding-left:18px;color:var(--dim)}
 .prod .ph0{background:var(--panel-2)} .prod .ph0 svg{width:40px;height:40px}
 .prod>div{flex:1;min-width:0}
 .loadcard{display:flex;gap:12px;align-items:center}
+.ebs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.eb{display:inline-flex;align-items:center;gap:5px;font-size:.82rem;border-radius:8px;padding:3px 9px;border:1px solid var(--line);background:var(--panel-2)}
+.eb svg{width:14px;height:14px}
+.eb.kcal svg{color:#e8743b}
+.eb.cost b{font-family:"Space Grotesk",system-ui,sans-serif;letter-spacing:.02em}
+.eb.cost .off{opacity:.28;font-family:"Space Grotesk",system-ui,sans-serif;font-weight:700;margin-left:-4px}
+.eb.c1{border-color:color-mix(in srgb,var(--ok) 45%,transparent)} .eb.c1 b{color:var(--ok)}
+.eb.c2{border-color:color-mix(in srgb,var(--warn) 45%,transparent)} .eb.c2 b{color:var(--warn)}
+.eb.c3{border-color:color-mix(in srgb,var(--bad) 45%,transparent)} .eb.c3 b{color:var(--bad)}
+.sortbar{margin:0 0 10px;align-items:center}
+.sortbar .chip{padding:4px 10px;font-size:.8rem}
 .tobuy{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line);font-size:.92rem}
 .tobuy ul{margin:4px 0 4px;padding-left:18px}
 .shop-rec{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line);flex-wrap:wrap}
@@ -595,8 +611,13 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.10.1';
+const APP_VERSION = '1.11.0';
 const CHANGELOG = [
+  { v: '1.11.0', d: '17 novembre 2026', items: [
+    'Ogni proposta (Cosa cucino?, Svuota frigo, Scansiona) mostra le calorie a porzione e quanto costa: € economica, €€ spesa media, €€€ costosa, con la spesa totale stimata e quella a testa.',
+    'Puoi ordinare le proposte per meno calorie, più economiche o più veloci.',
+    'Le ricette salvate mostrano calorie e costo stimato sotto il titolo e nel ricettario; il costo segue il numero di persone che scegli. Il nutrizionista ora calcola anche il costo e dice cosa pesa di più sulla spesa.'
+  ]},
   { v: '1.10.1', d: '17 novembre 2026', items: [
     'Ricerca di ricette molto più veloce: l\'AI usa un ragionamento breve (basta per idee e ricette) e l\'app sceglie i modelli Gemini stabili prima di quelli in anteprima, più lenti e intasati.',
     'Mai più attese di minuti: ogni ricerca ha un tempo massimo; se un modello è lento l\'app passa al successivo e se lo ricorda per qualche ora.',
@@ -1132,7 +1153,8 @@ function pickList(data, keys) {
 function normIdea(x) {
   if (!x || typeof x !== 'object') return null;
   const title = x.title || x.titolo || x.nome || x.name; if (!title) return null;
-  return Object.assign({}, x, { title, description: x.description || x.descrizione || '', minutes: x.minutes || x.minuti || x.tempo, difficulty: x.difficulty || x.difficolta || x.difficoltà, missing: x.missing || x.mancanti || [], why: x.why || x.perche || x.perché || '', course: x.course || x.portata || x.category || '' });
+  return Object.assign({}, x, { title, description: x.description || x.descrizione || '', minutes: x.minutes || x.minuti || x.tempo, difficulty: x.difficulty || x.difficolta || x.difficoltà, missing: x.missing || x.mancanti || [], why: x.why || x.perche || x.perché || '', course: x.course || x.portata || x.category || '',
+    kcal: num(x.kcal ?? x.calorie ?? x.kcalPorzione), costEuro: num(x.costEuro ?? x.costo ?? x.cost), costLevel: num(x.costLevel ?? x.livelloCosto) });
 }
 function parseJsonLoose(t) {
   if (!t) return null;
@@ -1602,9 +1624,9 @@ async function importFromPhotos(files, useCover, log) {
 
 /* ---------- Svuota frigo ---------- */
 const FRIDGE_RULES = `Sei uno chef casalingo italiano pratico e creativo. Proponi idee di piatti REALI e collaudati (ricette che esistono davvero, non invenzioni strane) che si possono fare con quello che la persona ha.
-Rispetta: tempo massimo totale, strumenti disponibili, numero di persone, preferenze. Varia le proposte (tecniche e tipi di piatto diversi).
+Rispetta: tempo massimo totale, strumenti disponibili, numero di persone, preferenze. Varia le proposte (tecniche e tipi di piatto diversi). Per ogni proposta stima anche, in modo onesto e realistico: "kcal" = calorie di UNA porzione; "costEuro" = spesa totale stimata in euro per tutti gli ingredienti, per il numero di persone indicato, ai prezzi medi di un supermercato italiano (dispensa base inclusa a valore pieno); "costLevel" = 1 economica (meno di 3 € a persona), 2 media (3-7 € a persona), 3 costosa (oltre 7 € a persona).
 Rispondi SOLO con JSON:
-{"ideas":[{"title":"","description":"1 frase","category":"primo|secondo|...","minutes":25,"difficulty":"facile|media|impegnativa","uses":["ingredienti che ha e che usa"],"missing":["ingredienti che mancherebbero, vuoto se nessuno"],"why":"perché è adatta","searchQuery":"titolo breve da cercare su un sito di ricette","sourceUrl":"link a una ricetta reale se l'hai trovata, altrimenti stringa vuota"}]}`;
+{"ideas":[{"title":"","description":"1 frase","category":"primo|secondo|...","minutes":25,"difficulty":"facile|media|impegnativa","uses":["ingredienti che ha e che usa"],"missing":["ingredienti che mancherebbero, vuoto se nessuno"],"why":"perché è adatta","searchQuery":"titolo breve da cercare su un sito di ricette","sourceUrl":"link a una ricetta reale se l'hai trovata, altrimenti stringa vuota","kcal":550,"costEuro":12,"costLevel":2}]}`;
 
 async function fridgeIdeas(q, exclude, signal) {
   const prompt = [
@@ -1630,6 +1652,7 @@ Usa la versione classica e collaudata del piatto.`;
   const res = await AI.generate({ system: RECIPE_RULES, parts: [{ text }], temperature: 0.4 });
   if (!res.data || res.data.notARecipe) throw new Error('Non sono riuscito a scrivere la ricetta, riprova.');
   const r = fromAiRecipe(res.data, { source: { type: 'ai', url: idea.sourceUrl || '' } });
+  if (idea.kcal || idea.costEuro || idea.costLevel) r.estimate = { kcal: idea.kcal, costEuro: idea.costEuro, costLevel: idea.costLevel, people: q.people };
   r.warnings = (r.warnings || []).concat(['Ricetta scritta dall\'AI a partire dall\'idea: dagli un\'occhiata prima di salvarla.']);
   return r;
 }
@@ -1722,10 +1745,11 @@ Rispondi SOLO con JSON:
  "allergens": [{"name": "uno dei 14 allergeni UE in italiano: glutine, crostacei, uova, pesce, arachidi, soia, latte, frutta a guscio, sedano, senape, sesamo, solfiti, lupini, molluschi", "status": "contiene|tracce", "from": "ingredienti responsabili"}],
  "suitableFor": {"celiaci": false, "intolleranti al lattosio": false, "vegetariani": true, "vegani": false},
  "guestAdvice": "se sono indicate esigenze degli ospiti: cosa cambiare in QUESTA ricetta perché vada bene per tutti (sostituzioni con dosi), altrimenti stringa vuota",
+ "costEuro": 14.5, "costLevel": 2, "costNote": "cosa pesa di più sul costo, in breve",
  "swaps": {"healthy": "come renderla più leggera", "glutenFree": "come farla senza glutine, o stringa vuota se già lo è", "lactoseFree": "come farla senza lattosio, o stringa vuota se già lo è"},
  "assumptions": ["ipotesi fatte"]
 }
-Valori in grammi (sale in grammi, energia in kcal) arrotondati a 1 decimale. "tracce" per prodotti confezionati che spesso le contengono (es. cioccolato: latte, frutta a guscio, soia). Sii concreto e onesto: sono stime.`;
+Valori in grammi (sale in grammi, energia in kcal) arrotondati a 1 decimale. "costEuro" = spesa totale stimata per TUTTA la ricetta (le porzioni indicate) ai prezzi medi di un supermercato italiano; "costLevel" 1 economica (meno di 3 € a persona), 2 media (3-7 €), 3 costosa (oltre 7 €). "tracce" per prodotti confezionati che spesso le contengono (es. cioccolato: latte, frutta a guscio, soia). Sii concreto e onesto: sono stime.`;
 async function computeNutrition(r) {
   const ings = r.components.map((c) => (c.name ? c.name + ':\n' : '') + c.ingredients.map((i) => '- ' + [i.qty != null ? fmtQty(i.qty, i.unit) : '', unitLabel(i.unit, i.qty), i.name].filter(Boolean).join(' ') + (i.prep ? ', ' + i.prep : '') + (i.optional ? ' (facoltativo)' : '')).join('\n')).join('\n');
   const steps = r.phases.flatMap((p) => p.steps.map((s) => s.text)).join(' ').slice(0, 3000);
@@ -1772,6 +1796,22 @@ function openNeeds(id) {
     $('#ndClear', m).onclick = () => save(true);
   });
 }
+/* calorie e costo nella scheda: dal nutrizionista se calcolato, altrimenti dalla stima della proposta */
+function recipeEstimate(r) {
+  const n = r.nutrition && r.nutrition.data;
+  const e = r.estimate || {};
+  const kcal = n && n.perPortion && n.perPortion.kcal ? n.perPortion.kcal : e.kcal;
+  let cost = n && n.costEuro != null ? num(n.costEuro) : null, base = r.servings.amount;
+  if (cost == null && e.costEuro != null) { cost = num(e.costEuro); base = e.people || r.servings.amount; }
+  const lvl = n && n.costLevel ? num(n.costLevel) : e.costLevel;
+  return { kcal, cost, base, lvl, fromNutri: !!(n && n.costEuro != null) };
+}
+function recipeEstHtml(r, v) {
+  const e = recipeEstimate(r); if (!e.kcal && e.cost == null && !e.lvl) return '';
+  const people = (v && v.servings) || r.servings.amount;
+  const cost = e.cost != null ? e.cost * people / (e.base || people) : null;
+  return estBadges(e.kcal, cost, cost == null ? e.lvl : null, people).replace('class="ebs"', 'class="ebs" style="margin:2px 0 6px"');
+}
 function nutritionHtml(r, num) {
   const pr = recipeNeeds(r);
   const al = detectAllergens(r);
@@ -1808,6 +1848,7 @@ function nutritionHtml(r, num) {
       <div><b>${n1(pp.protein)} g</b><span>proteine</span></div>
       <div><b>${n1(pp.fat)} g</b><span>grassi</span></div>
     </div>
+    ${n.costEuro != null ? `<p style="margin:0"><b>Costo stimato:</b> ~${euro(Number(n.costEuro))} per ${fmtQty(r.servings.amount, 'pz')} ${esc(r.servings.unit)} (${euro(Number(n.costEuro) / (r.servings.amount || 1))} a porzione) · ${esc(COST_LABEL[costLevelOf(Number(n.costEuro), r.servings.amount, n.costLevel)] || '')}${n.costNote ? ` <span class="dim small">— ${esc(n.costNote)}</span>` : ''}</p>` : ''}
     <p class="small dim" style="margin:0">1 porzione = ${n.portionNote ? esc(n.portionNote) + ', ' : ''}circa ${Math.round(g)} g (ricetta per ${fmtQty(r.servings.amount, 'pz')} ${esc(r.servings.unit)}).</p>
     <table class="nutri"><thead><tr><th></th><th>Porzione</th><th>100 g</th><th>%&nbsp;giornal.</th></tr></thead><tbody>
       ${rows.map(([l, k, u]) => `<tr class="${l.startsWith('  ') ? 'sub' : ''}"><td>${esc(l.trim())}</td><td>${n1(pp[k])} ${u}</td><td>${g ? n1(per100(pp[k] || 0)) + ' ' + u : '—'}</td><td>${ri(k) != null ? ri(k) + '%' : ''}</td></tr>`).join('')}
@@ -1976,6 +2017,34 @@ function openModal(title, html, onMount) {
   document.body.appendChild(m);
   if (onMount) onMount(m);
   return m;
+}
+/* calorie e spesa: badge sulle proposte e sulle ricette */
+function costLevelOf(costEuro, people, lvl) {
+  if (costEuro != null && people) { const pp = costEuro / people; return pp < 3 ? 1 : pp <= 7 ? 2 : 3; }
+  return lvl >= 1 && lvl <= 3 ? Math.round(lvl) : null;
+}
+const COST_LABEL = { 1: 'Economica', 2: 'Spesa media', 3: 'Costosa' };
+function euro(x) { x = Math.max(0.5, +x || 0); if (x >= 20) return Math.round(x) + ' €'; const r = Math.round(x * 2) / 2; return (r % 1 ? r.toFixed(2).replace('.', ',') : String(r)) + ' €'; }
+function estBadges(kcal, costEuro, costLevel, people) {
+  const lvl = costLevelOf(costEuro, people, costLevel);
+  const out = [];
+  if (kcal) out.push(`<span class="eb kcal">${ic('flame')}<b>${Math.round(kcal)}</b> kcal a porzione</span>`);
+  if (lvl) out.push(`<span class="eb cost c${lvl}" title="${esc(COST_LABEL[lvl])}"><b>${'€'.repeat(lvl)}</b><span class="off">${'€'.repeat(3 - lvl)}</span> ${esc(COST_LABEL[lvl])}${costEuro ? ` · ~${euro(costEuro)}${people > 1 ? ` (${euro(costEuro / people)} a testa)` : ''}` : ''}</span>`);
+  return out.length ? `<div class="ebs">${out.join('')}</div>` : '';
+}
+function ideaBadges(d, people) { return estBadges(d.kcal, d.costEuro, d.costLevel, people); }
+/* ordinamento delle proposte */
+function sortIdeas(list, mode) {
+  list.forEach((d, i) => { if (d._rank == null) d._rank = i; });
+  if (!mode) list.sort((a, b) => a._rank - b._rank);
+  const lv = (d) => costLevelOf(d.costEuro, 1, d.costLevel) || 9;
+  if (mode === 'kcal') list.sort((a, b) => (a.kcal || 9e9) - (b.kcal || 9e9));
+  if (mode === 'cost') list.sort((a, b) => (a.costEuro ?? lv(a) * 100) - (b.costEuro ?? lv(b) * 100));
+  if (mode === 'time') list.sort((a, b) => (num(a.minutes) || 9e9) - (num(b.minutes) || 9e9));
+  return list;
+}
+function sortBar(act, mode) {
+  return `<div class="chips sortbar"><span class="small dim">Ordina:</span>${[['', 'Consigliate'], ['kcal', 'Meno calorie'], ['cost', 'Più economiche'], ['time', 'Più veloci']].map(([k, l]) => `<span class="chip ${(mode || '') === k ? 'on' : ''}" data-act="${act}" data-v="${k}">${l}</span>`).join('')}</div>`;
 }
 function loadingCard(text, cancelAct) {
   return `<div class="card loadcard"><span style="color:var(--accent)">${ic('refresh', 'spin').replace('<svg', '<svg style="width:22px;height:22px"')}</span><span style="flex:1">${esc(text)}<span class="small dim" style="display:block"><span class="elapsed" data-t0="${Date.now()}">0</span> s · di solito 10-30 secondi</span></span>${cancelAct ? `<button class="btn sm ghost" data-act="${cancelAct}">Annulla</button>` : ''}</div>`;
@@ -2152,7 +2221,7 @@ function cardHtml(r) {
     <div class="ph">${r.photo ? `<img src="${esc(r.photo)}" alt="" loading="lazy">` : `<div class="noimg">${ic('pot')}</div>`}${r.favorite ? `<span class="fav">${ic('starf')}</span>` : ''}
       <span class="cact"><button class="cart ${Shop.has(r.id) ? 'on' : ''}" data-act="card-cart" data-id="${r.id}" aria-label="${Shop.has(r.id) ? 'Togli dalla' : 'Aggiungi alla'} lista della spesa">${ic('cart')}</button><button data-act="card-edit" data-id="${r.id}" aria-label="Modifica ${esc(r.title)}">${ic('edit')}</button><button class="del" data-act="card-del" data-id="${r.id}" aria-label="Elimina ${esc(r.title)}">${ic('trash')}</button></span></div>
     <div class="bd"><h3>${esc(r.title || 'Senza titolo')}</h3>
-    <div class="m">${t ? `<span>${fmtMin(t)}</span>` : ''}<span>${esc(r.difficulty)}</span>${r.log.length ? `<span>×${r.log.length}</span>` : ''}</div></div></a>`;
+    <div class="m">${t ? `<span>${fmtMin(t)}</span>` : ''}<span>${esc(r.difficulty)}</span>${(() => { const e = recipeEstimate(r); const l = costLevelOf(e.cost, e.base, e.lvl); return (e.kcal ? `<span>${Math.round(e.kcal)} kcal</span>` : '') + (l ? `<span class="cl c${l}">${'€'.repeat(l)}</span>` : ''); })()}${r.log.length ? `<span>×${r.log.length}</span>` : ''}</div></div></a>`;
 }
 
 /* =========================================================
@@ -2213,6 +2282,7 @@ function recipeHtml(r, v) {
     ${t && (r.times.prep ? 1 : 0) + (r.times.cook ? 1 : 0) + (r.times.rest ? 1 : 0) > 1 ? `<span class="meta-pill">Totale <b>${fmtMin(t)}</b></span>` : ''}
     <span class="meta-pill">${ic('gauge')} <b>${esc(cap(r.difficulty))}</b></span>
   </div>
+  ${recipeEstHtml(r, v)}
   <div class="row" style="margin-top:6px">
     ${servingsCtl(r, v, 'serv')}
     ${k !== 1 ? `<button class="btn ghost sm" data-act="serv-reset" data-id="${r.id}">Dosi originali (${fmtQty(r.servings.amount, 'pz')})</button>` : ''}
@@ -2309,6 +2379,7 @@ function recipeToText(r, k = 1) {
   if (r.storage) L.push('', 'CONSERVAZIONE', r.storage);
   if (r.nutrition && r.nutrition.data && r.nutrition.data.perPortion) { const pp = r.nutrition.data.perPortion; L.push('', 'VALORI A PORZIONE (stima): ' + Math.round(pp.kcal || 0) + ' kcal · carboidrati ' + n1(pp.carbs) + ' g · proteine ' + n1(pp.protein) + ' g · grassi ' + n1(pp.fat) + ' g'); }
   const alg = Object.keys(detectAllergens(r)); if (alg.length) L.push('Allergeni: ' + alg.join(', '));
+  { const e = recipeEstimate(r); if (e.cost != null) L.push('Costo stimato: ~' + euro(e.cost * (r.servings.amount * k) / (e.base || r.servings.amount))); }
   if (r.source.url) L.push('', 'Fonte: ' + r.source.url);
   L.push('', '— In Cucina con Paolo · GPverse');
   return L.join('\n');
@@ -2928,10 +2999,10 @@ async function showProduct(p) {
   drawScanResult($('#app'));
   if (AI.has()) scanIdeas(false);
 }
-const SCAN_RULES = `Sei uno chef italiano esperto. Qualcuno è al supermercato con in mano un prodotto e vuole sapere cosa cucinarci. Proponi ricette REALI e collaudate in cui quel prodotto è protagonista, adatte proprio al suo formato/tipo (es. per una pasta corta rigata sughi corposi, per gli spaghetti sughi che avvolgono). Considera la quantità della confezione. Varia le proposte.
+const SCAN_RULES = `Sei uno chef italiano esperto. Qualcuno è al supermercato con in mano un prodotto e vuole sapere cosa cucinarci. Proponi ricette REALI e collaudate in cui quel prodotto è protagonista, adatte proprio al suo formato/tipo (es. per una pasta corta rigata sughi corposi, per gli spaghetti sughi che avvolgono). Considera la quantità della confezione. Varia le proposte. Per ogni proposta stima anche, in modo onesto e realistico: "kcal" = calorie di UNA porzione; "costEuro" = spesa totale stimata in euro per tutti gli ingredienti (compreso il prodotto), per il numero di persone indicato, ai prezzi medi di un supermercato italiano (dispensa base inclusa a valore pieno); "costLevel" = 1 economica (meno di 3 € a persona), 2 media (3-7 € a persona), 3 costosa (oltre 7 € a persona).
 Per ognuna elenca in "toBuy" SOLO gli ingredienti da comprare, con dose per il numero di persone indicato: escludi il prodotto stesso e la dispensa che la persona ha già.
 Rispondi SOLO con JSON:
-{"ideas":[{"title":"","course":"primo|secondo|contorno|dolce|antipasto|piatto unico","description":"1 frase invitante","minutes":30,"difficulty":"facile|media|impegnativa","productQty":"quanto prodotto usa, es. 320 g","why":"perché è perfetta per questo prodotto","toBuy":[{"name":"guanciale","qty":150,"unit":"g"}],"pantry":["ingredienti di dispensa usati"]}]}`;
+{"ideas":[{"title":"","course":"primo|secondo|contorno|dolce|antipasto|piatto unico","description":"1 frase invitante","minutes":30,"difficulty":"facile|media|impegnativa","productQty":"quanto prodotto usa, es. 320 g","why":"perché è perfetta per questo prodotto","toBuy":[{"name":"guanciale","qty":150,"unit":"g"}],"pantry":["ingredienti di dispensa usati"],"kcal":550,"costEuro":12,"costLevel":2}]}`;
 async function scanIdeas(more) {
   const sc = scanState(); const p = sc.product; if (!p) return;
   if (more) sc.seen = sc.seen.concat(sc.ideas.map((x) => x.title));
@@ -2951,6 +3022,7 @@ async function scanIdeas(more) {
   try {
     const res = await AI.generate({ system: SCAN_RULES, parts: [{ text }], temperature: 0.8, signal: sig });
     sc.ideas = pickList(res.data, ['ideas', 'idee', 'ricette', 'recipes']).map(normIdea).filter(Boolean).map((x) => Object.assign(x, { toBuy: Array.isArray(x.toBuy) ? x.toBuy.filter((t) => t && t.name) : [] }));
+    sortIdeas(sc.ideas, sc.sort);
     if (!sc.ideas.length) throw new Error('Nessuna proposta, riprova.');
   } catch (e) { if (e.code === 'cancel') return; sc.error = e.message; }
   if (sig.cancelled) return;
@@ -2983,7 +3055,7 @@ function drawScanResult(app) {
   ${!AI.has() ? `<div class="notice">Per le proposte serve la <a href="#/impostazioni">chiave AI gratuita</a>.</div>` : ''}
   ${sc.loading ? loadingCard('Penso a cosa cucinarci…', 'scan-cancel').replace(/data-t0="\d+"/, 'data-t0="' + (sc.t0 || Date.now()) + '"') : ''}
   ${sc.error ? `<div class="notice"><b>Non ci sono riuscito.</b> ${esc(sc.error)} <button class="btn sm" data-act="scan-retry">Riprova</button></div>` : ''}
-  ${!sc.loading && sc.ideas.length ? `<div class="stack">${sc.ideas.map((d, i) => {
+  ${!sc.loading && sc.ideas.length ? `${sortBar('scan-sort', sc.sort)}<div class="stack">${sc.ideas.map((d, i) => {
     const added = sc.added[d.title]; const busy = sc.busy[d.title]; const carted = sc.carted[d.title];
     return `<div class="idea">
       <div class="row" style="align-items:flex-start;flex-wrap:nowrap">
@@ -2991,6 +3063,7 @@ function drawScanResult(app) {
         ${added ? `<a class="addbtn ok" href="#/r/${encodeURIComponent(added)}" aria-label="Apri nel ricettario">${ic('check')}</a>` : `<button class="addbtn" data-act="scan-add" data-i="${i}" ${busy ? 'disabled' : ''} aria-label="Aggiungi al ricettario">${busy ? ic('refresh', 'spin') : ic('plus')}</button>`}
       </div>
       <div class="dim small">${[d.minutes ? fmtMin(d.minutes) : '', d.difficulty, d.productQty ? 'usa ' + d.productQty : ''].filter(Boolean).map(esc).join(' · ')}</div>
+      ${ideaBadges(d, sc.people)}
       ${d.description ? `<p style="margin:6px 0 0">${esc(d.description)}</p>` : ''}
       ${d.why ? `<div class="why">${esc(d.why)}</div>` : ''}
       <div class="tobuy"><b>${d.toBuy.length ? 'Ti serve ancora:' : 'Hai già tutto il resto ✓'}</b>${d.toBuy.length ? `<ul>${d.toBuy.map((t) => `<li>${esc(toBuyLine(t))}</li>`).join('')}</ul>` : ''}${d.pantry && d.pantry.length ? `<div class="small dim">Dalla dispensa: ${esc(d.pantry.join(', '))}</div>` : ''}</div>
@@ -3014,6 +3087,7 @@ Usa la versione classica e collaudata del piatto. "servings" deve essere ${sc.pe
     const res = await AI.generate({ system: RECIPE_RULES, parts: [{ text }], temperature: 0.4 });
     if (!res.data || res.data.notARecipe) throw new Error('Non sono riuscito a scrivere la ricetta, riprova.');
     const r = fromAiRecipe(res.data, { source: { type: 'scan', url: '' } });
+    if (d.kcal || d.costEuro || d.costLevel) r.estimate = { kcal: d.kcal, costEuro: d.costEuro, costLevel: d.costLevel, people: sc.people };
     r.warnings = []; r.tags = [...new Set(r.tags.concat([p.name.split(' ').slice(0, 2).join(' ').toLowerCase()]))];
     if (p.image && /^data:/.test(p.image)) r.photo = '';
     await DB.put(r); await loadRecipes();
@@ -3159,9 +3233,9 @@ function renderWizard(app) {
 function wzSummary(w) {
   return [w.courses.length ? w.courses.join(', ') : 'qualsiasi portata'].concat(wzDetailText(w).map((x) => x.split(' — ')[1]), [[w.event, w.eventOther].filter(Boolean).join(' – ') || 'nessuna occasione particolare'], w.cook.length ? [(w.cookStrict ? 'solo ' : '') + w.cook.join(', ')] : [], [w.people + ' persone', w.time >= 240 ? 'tempo senza limiti' : 'max ' + fmtMin(w.time), 'difficoltà ' + w.difficulty]).concat(w.wishes).concat(needsList(w.needs)).join(' · ');
 }
-const WZ_RULES = `Sei uno chef italiano esperto che aiuta un cuoco casalingo appassionato (senza scuola di cucina) a scegliere cosa cucinare. Proponi ricette REALI e collaudate, adatte all'occasione, alla stagione, al tempo e alle esigenze indicate. Rispetta con precisione i dettagli chiesti per ogni portata (base, condimento, protagonista, taglio, tipo di dolce, gusto) e i metodi di cottura indicati; se ci sono più portate, distribuisci le proposte tra le portate. Se ci sono esigenze di salute o allergie, ogni proposta deve già rispettarle (scegli piatti naturalmente adatti o indica la versione adatta). Varia le proposte.
+const WZ_RULES = `Sei uno chef italiano esperto che aiuta un cuoco casalingo appassionato (senza scuola di cucina) a scegliere cosa cucinare. Proponi ricette REALI e collaudate, adatte all'occasione, alla stagione, al tempo e alle esigenze indicate. Rispetta con precisione i dettagli chiesti per ogni portata (base, condimento, protagonista, taglio, tipo di dolce, gusto) e i metodi di cottura indicati; se ci sono più portate, distribuisci le proposte tra le portate. Se ci sono esigenze di salute o allergie, ogni proposta deve già rispettarle (scegli piatti naturalmente adatti o indica la versione adatta). Varia le proposte. Per ogni proposta stima anche, in modo onesto e realistico: "kcal" = calorie di UNA porzione; "costEuro" = spesa totale stimata in euro per tutti gli ingredienti, per il numero di persone indicato, ai prezzi medi di un supermercato italiano (dispensa base inclusa a valore pieno); "costLevel" = 1 economica (meno di 3 € a persona), 2 media (3-7 € a persona), 3 costosa (oltre 7 € a persona).
 Rispondi SOLO con JSON:
-{"ideas":[{"title":"","course":"antipasto|primo|secondo|contorno|piatto unico|dolce|aperitivo","description":"1-2 frasi invitanti","minutes":45,"difficulty":"facile|media|impegnativa","why":"perché è adatta a questa occasione e a questi ospiti","needsOk":"come rispetta le esigenze indicate, o stringa vuota se non ce ne sono","mainIngredients":["ingrediente principale"],"searchQuery":"titolo breve da cercare"}]}`;
+{"ideas":[{"title":"","course":"antipasto|primo|secondo|contorno|piatto unico|dolce|aperitivo","description":"1-2 frasi invitanti","minutes":45,"difficulty":"facile|media|impegnativa","why":"perché è adatta a questa occasione e a questi ospiti","needsOk":"come rispetta le esigenze indicate, o stringa vuota se non ce ne sono","mainIngredients":["ingrediente principale"],"searchQuery":"titolo breve da cercare","kcal":550,"costEuro":12,"costLevel":2}]}`;
 function wzPrompt(w) {
   const month = new Date().toLocaleDateString('it-IT', { month: 'long' });
   return [
@@ -3186,7 +3260,7 @@ async function wzSearch(more) {
   w.results = true; w.loading = true; w.error = ''; w.t0 = Date.now(); drawWzResults($('#app'));
   try {
     const res = await AI.generate({ system: WZ_RULES, parts: [{ text: wzPrompt(w) }], temperature: 0.8, signal: sig });
-    w.ideas = pickList(res.data, ['ideas', 'idee', 'proposte', 'ricette', 'recipes']).map(normIdea).filter(Boolean);
+    w.ideas = sortIdeas(pickList(res.data, ['ideas', 'idee', 'proposte', 'ricette', 'recipes']).map(normIdea).filter(Boolean), w.sort);
     if (!w.ideas.length) throw new Error('Nessuna proposta, riprova cambiando qualche risposta.');
   } catch (e) { if (e.code === 'cancel') return; w.error = e.message + (e.raw ? ' — Dettaglio da Google: ' + String(e.raw).slice(0, 200) : ''); }
   if (sig.cancelled) return;
@@ -3198,7 +3272,7 @@ function drawWzResults(app) {
     <p class="small dim" style="margin-top:0">${esc(wzSummary(w))} · <a href="#" data-act="wz-edit">modifica risposte</a></p>
     ${w.loading ? loadingCard('Penso a qualche ricetta per te…', 'wz-cancel').replace(/data-t0="\d+"/, 'data-t0="' + (w.t0 || Date.now()) + '"') : ''}
     ${w.error ? `<div class="notice"><b>Non ci sono riuscito.</b> ${esc(w.error)} <button class="btn sm" data-act="wz-go">Riprova</button></div>` : ''}
-    ${!w.loading && w.ideas.length ? `<div class="stack">${w.ideas.map((d, i) => {
+    ${!w.loading && w.ideas.length ? `${sortBar('wz-sort', w.sort)}<div class="stack">${w.ideas.map((d, i) => {
       const added = w.added[d.title]; const busy = w.busy[d.title];
       return `<div class="idea">
         <div class="row" style="align-items:flex-start;flex-wrap:nowrap">
@@ -3207,6 +3281,7 @@ function drawWzResults(app) {
             : `<button class="addbtn" data-act="wz-add" data-i="${i}" ${busy ? 'disabled' : ''} aria-label="Aggiungi al ricettario">${busy ? ic('refresh', 'spin') : ic('plus')}</button>`}
         </div>
         <div class="dim small">${[d.minutes ? fmtMin(d.minutes) : '', d.difficulty].filter(Boolean).map(esc).join(' · ')}</div>
+        ${ideaBadges(d, w.people)}
         ${d.description ? `<p style="margin:6px 0 0">${esc(d.description)}</p>` : ''}
         ${d.why ? `<div class="why">${esc(d.why)}</div>` : ''}
         ${d.needsOk ? `<div class="miss" style="color:var(--ok)"><b>✓</b> ${esc(d.needsOk)}</div>` : ''}
@@ -3234,6 +3309,7 @@ Usa la versione classica e collaudata del piatto. "servings" deve essere ${w.peo
     if (!res.data || res.data.notARecipe) throw new Error('Non sono riuscito a scrivere la ricetta, riprova.');
     const r = fromAiRecipe(res.data, { source: { type: 'consiglio', url: '' } });
     r.diners = clone(w.needs);
+    if (d.kcal || d.costEuro || d.costLevel) r.estimate = { kcal: d.kcal, costEuro: d.costEuro, costLevel: d.costLevel, people: w.people };
     r.tags = [...new Set(r.tags.concat([w.event].filter(Boolean)))];
     r.warnings = [];
     await DB.put(r); await loadRecipes();
@@ -3307,11 +3383,13 @@ function drawIdeas(loading) {
   box.innerHTML = `
     <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Idee per te</h2>
       <button class="btn sm" data-act="fr-more">${ic('refresh')} Altre idee</button></div>
+    ${sortBar('fr-sort', S.frSort)}
     ${!S.frigoWeb ? `<p class="small dim" style="margin-top:0">Idee proposte dall'AI (con la chiave gratuita la ricerca web diretta non è disponibile): usa i link per vedere le ricette reali.</p>` : ''}
     <div class="stack">${S.frigoIdeas.map((d, i) => `
       <div class="idea">
         <h3>${esc(d.title)}</h3>
         <div class="dim small">${[d.minutes ? fmtMin(d.minutes) : '', d.difficulty, d.category].filter(Boolean).map(esc).join(' · ')}</div>
+        ${ideaBadges(d, frigoState().people)}
         ${d.description ? `<p style="margin:6px 0 0">${esc(d.description)}</p>` : ''}
         ${d.missing && d.missing.length ? `<div class="miss"><b style="color:var(--warn)">Ti manca:</b> ${d.missing.map(esc).join(', ')}</div>` : `<div class="miss" style="color:var(--ok)"><b>Hai tutto ✓</b></div>`}
         ${d.why ? `<div class="why">${esc(d.why)}</div>` : ''}
@@ -3337,7 +3415,7 @@ async function frSearch(more) {
   try {
     const out = await fridgeIdeas(f, S.frigoSeen, sig);
     if (sig.cancelled || !$('#frRes')) return;
-    S.frigoIdeas = out.ideas; S.frigoSources = out.sources; S.frigoWeb = out.web;
+    S.frigoIdeas = sortIdeas(out.ideas, S.frSort); S.frigoSources = out.sources; S.frigoWeb = out.web;
     if (!out.ideas.length) throw new Error('Nessuna idea trovata, riprova cambiando qualcosa.');
     drawIdeas();
   } catch (e) {
@@ -3625,6 +3703,9 @@ const ACT = {
   'wz-prev': () => { const w = wzState(); w.step = Math.max(0, w.step - 1); renderWizard($('#app')); window.scrollTo(0, 0); },
   'wz-goto': (a) => { const w = wzState(); w.step = +a.dataset.i; renderWizard($('#app')); },
   'wz-go': () => wzSearch(false),
+  'wz-sort': (a) => { const w = wzState(); w.sort = a.dataset.v; sortIdeas(w.ideas, w.sort); drawWzResults($('#app')); },
+  'fr-sort': (a) => { S.frSort = a.dataset.v; sortIdeas(S.frigoIdeas, S.frSort); drawIdeas(); },
+  'scan-sort': (a) => { const sc = scanState(); sc.sort = a.dataset.v; sortIdeas(sc.ideas, sc.sort); drawScanResult($('#app')); },
   'wz-cancel': () => { const w = wzState(); if (w.sig) w.sig.cancelled = true; w.loading = false; if (!w.ideas.length) { w.results = false; renderWizard($('#app')); } else drawWzResults($('#app')); },
   'wz-more': () => wzSearch(true),
   'wz-add': (a) => wzAdd(+a.dataset.i),
