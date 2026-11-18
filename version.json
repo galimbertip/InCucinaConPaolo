@@ -1,11 +1,9 @@
 {
-  "version": "1.12.0",
-  "date": "17 novembre 2026",
+  "version": "1.12.1",
+  "date": "18 novembre 2026",
   "items": [
-    "Qualsiasi ricetta diventa adatta a intolleranze e allergie: accanto a ogni ingrediente compare cosa usare al suo posto (es. latte → latte senza lattosio, farina 00 → mix senza glutine, con le correzioni di dose) e nei passaggi c'è l'avviso \"Attenzione: al posto di… usa…\".",
-    "Riquadro \"Adattata per…\" in cima alla ricetta con tutte le sostituzioni e gli ingredienti confezionati da controllare in etichetta (spiga barrata).",
-    "Nuove \"Esigenze di casa\" in Altro: valgono per tutte le ricette, salvate, importate e proposte. Ogni ricetta può comunque averne di diverse con \"Esigenze a tavola\".",
-    "La lista della spesa mette già i sostituti (es. \"latte senza lattosio, al posto di latte\").",
-    "Cosa cucino?, Svuota frigo e Scansiona possono proporre anche ricette \"normali\", indicando le sostituzioni da fare."
+    "Corretta la ricerca che restava ferma per minuti: Google ha ridotto il piano gratuito (circa 20 richieste al giorno sui modelli Flash) e dismesso alcuni modelli. Ora per idee, proposte e valori l'app usa i modelli Flash-Lite (circa 500 richieste al giorno) e il nuovo Gemini 4 Hydrogen, e tiene i Flash per i video.",
+    "I modelli con le richieste di oggi finite vengono saltati fino alla mattina dopo; se il primo modello tarda, l'app ne interroga subito un secondo e usa la risposta più veloce.",
+    "Durante la ricerca vedi quale modello sta rispondendo e perché passa a un altro; in Altro c'è l'elenco dei modelli saltati con \"riprova tutti\"."
   ]
 }
