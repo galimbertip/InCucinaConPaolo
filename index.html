@@ -3,6 +3,12 @@
   In Cucina con Paolo — GPverse
   Cronologia versioni (schema V.major.minor.patch)
 
+  v1.13.0 — 20 novembre 2026
+    - Sincronizzazione Firebase (progetto benzinapp-f4763, login Google):
+      users/{uid}/incucina_recipes, incucina_photos, incucina_meta/state;
+      IndexedDB resta cache locale, merge per syncAt, tombstone per le
+      cancellazioni, aggiornamenti in tempo reale.
+
   v1.12.1 — 18 novembre 2026
     - Motore AI: modelli per compito (Lite/Hydrogen per testi, Flash per
       video), quota giornaliera rilevata e saltata, richiesta parallela se
@@ -244,6 +250,13 @@ textarea{min-height:80px;resize:vertical;line-height:1.45}
 .sectionhead .aside{margin-left:auto}
 
 /* Home */
+.synctip{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 10px 10px 12px;border-radius:var(--r);background:color-mix(in srgb,var(--accent) 9%,var(--panel));border:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+.synctip>svg{width:22px;height:22px;color:var(--accent);flex:none}
+.synctip>span{flex:1;min-width:0}
+.synctip b{display:block;font-family:"Space Grotesk",system-ui,sans-serif;font-size:.92rem}
+.synctip small{display:block;color:var(--dim);font-size:.78rem}
+.rulebox{font-size:.72rem;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;overflow:auto;white-space:pre;margin:6px 0}
+.nav a.syncerr svg{color:var(--bad)}
 .hsec{display:flex;align-items:center;gap:8px;margin:22px 0 10px;font-family:"Space Grotesk",system-ui,sans-serif;font-weight:700;font-size:1.02rem}
 .hsec .n{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;font-size:.8rem;background:linear-gradient(135deg,var(--accent),var(--violet));color:var(--on-accent)}
 .hsec .more{margin-left:auto;font-size:.86rem;font-weight:600;text-decoration:none}
@@ -633,8 +646,13 @@ body.cooking .timers{bottom:auto;top:calc(var(--safe-t) + 74px)}
 /* =========================================================
    In Cucina con Paolo — GPverse
    ========================================================= */
-const APP_VERSION = '1.12.1';
+const APP_VERSION = '1.13.0';
 const CHANGELOG = [
+  { v: '1.13.0', d: '20 novembre 2026', items: [
+    'Sincronizzazione tra dispositivi: in Altro accedi con Google (stesso account e stesso spazio Firebase di GalleggiApp) e ritrovi ricette, foto, lista della spesa, esigenze di casa, dispensa e preferenze su telefono, PC e tablet, aggiornate in tempo reale.',
+    'L\'app continua a funzionare anche offline: le modifiche fatte senza rete vengono inviate appena torna la connessione, e vince sempre la più recente.',
+    'Le ricette già presenti sul telefono vengono caricate da sole al primo accesso; si può portare anche la chiave AI sugli altri dispositivi, così sul PC non va reinserita.'
+  ]},
   { v: '1.12.1', d: '18 novembre 2026', items: [
     'Corretta la ricerca che restava ferma per minuti: Google ha ridotto il piano gratuito (circa 20 richieste al giorno sui modelli Flash) e dismesso alcuni modelli. Ora per idee, proposte e valori l\'app usa i modelli Flash-Lite (circa 500 richieste al giorno) e il nuovo Gemini 4 Hydrogen, e tiene i Flash per i video.',
     'I modelli con le richieste di oggi finite vengono saltati fino alla mattina dopo; se il primo modello tarda, l\'app ne interroga subito un secondo e usa la risposta più veloce.',
@@ -786,7 +804,10 @@ function mmss(sec) { sec = Math.round(sec); return String(Math.floor(sec / 60)).
 /* ---------- impostazioni (solo su questo dispositivo) ---------- */
 const settings = {
   get(k, d) { try { const v = localStorage.getItem('ic_' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
-  set(k, v) { try { localStorage.setItem('ic_' + k, JSON.stringify(v)); } catch {} }
+  set(k, v) {
+    try { localStorage.setItem('ic_' + k, JSON.stringify(v)); } catch {}
+    const C = window.__cloud; if (C && C.metaKeys().has(k) && !C.applying) { try { localStorage.setItem('ic_meta_ts', String(Date.now())); } catch {} C.queueMeta(); }
+  }
 };
 
 /* ---------- database (IndexedDB) ---------- */
@@ -812,10 +833,226 @@ const DB = {
   },
   all() { return this.tx('readonly', (s) => s.getAll()); },
   get(id) { return this.tx('readonly', (s) => s.get(id)); },
-  put(r) { return this.tx('readwrite', (s) => s.put(r)); },
-  del(id) { return this.tx('readwrite', (s) => s.delete(id)); },
-  clear() { return this.tx('readwrite', (s) => s.clear()); }
+  // ogni modifica locale viene anche mandata al cloud (se la sincronizzazione è attiva)
+  put(r) { if (!Cloud.applying) { r.syncAt = Date.now(); Cloud.queuePush(r); } return this.tx('readwrite', (s) => s.put(r)); },
+  del(id) { if (!Cloud.applying) Cloud.queueDelete(id); return this.tx('readwrite', (s) => s.delete(id)); },
+  async clear() { if (!Cloud.applying) (await this.all()).forEach((r) => Cloud.queueDelete(r.id)); return this.tx('readwrite', (s) => s.clear()); }
 };
+
+
+/* ---------- Sincronizzazione tra dispositivi (Firebase, stesso progetto di GalleggiApp) ----------
+   Dati: users/{uid}/incucina_recipes/{id} (ricette senza foto), users/{uid}/incucina_photos/{id__slot}
+   (una foto per documento, così si resta sotto il limite di 1 MB), users/{uid}/incucina_meta/state
+   (lista della spesa, esigenze di casa, dispensa, preferenze). Le ricette restano anche nel browser:
+   l'app funziona offline e alla riconnessione vince la modifica più recente. */
+const FB_CFG = {
+  apiKey: 'AIzaSyD9oVZP13hKQzCrp7rb0LOSU2VFLPR-igU',
+  authDomain: 'benzinapp-f4763.firebaseapp.com',
+  projectId: 'benzinapp-f4763',
+  storageBucket: 'benzinapp-f4763.firebasestorage.app',
+  messagingSenderId: '186081684364',
+  appId: '1:186081684364:web:ae67bd1b73540a275744a9'
+};
+const FB_SDK = 'https://www.gstatic.com/firebasejs/10.12.0/';
+function h32(str) { let h = 2166136261 >>> 0; const n = str.length; const step = Math.max(1, Math.floor(n / 4000)); for (let i = 0; i < n; i += step) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return (h >>> 0).toString(36) + '.' + n.toString(36); }
+const Cloud = {
+  fb: null, user: null, state: 'off', error: '', applying: false, unsubs: [], lastSync: 0, cloudSync: {}, ready: false,
+  pending: new Map(), dels: new Set(), timer: null, metaTimer: null,
+  metaKeys() { const k = new Set(['shop', 'house_needs', 'fr_pantry', 'fr_usePantry', 'fr_tools', 'fr_people', 'default_people', 'kcal_ref', 'auto_nutri', 'sync_key']); if (settings.get('sync_key', true)) k.add('gemini_key'); return k; },
+  on() { return !!settings.get('sync_on', false); },
+  async load() {
+    if (this.fb) return this.fb;
+    const [A, F, U] = await Promise.all([import(FB_SDK + 'firebase-app.js'), import(FB_SDK + 'firebase-firestore.js'), import(FB_SDK + 'firebase-auth.js')]);
+    const app = A.initializeApp(FB_CFG, 'incucina');
+    const db = F.getFirestore(app);
+    const auth = U.initializeAuth(app, { persistence: [U.indexedDBLocalPersistence, U.browserLocalPersistence] });
+    this.fb = { db, auth, F, U };
+    return this.fb;
+  },
+  setState(st, err) { this.state = st; this.error = err || ''; this.denied = /regola di sicurezza/.test(this.error); drawSyncBox(); updSyncDot(); },
+  async start() {
+    if (this.started) return; this.started = true;
+    this.setState('loading');
+    try {
+      const { auth, U } = await this.load();
+      U.getRedirectResult(auth, U.browserPopupRedirectResolver).catch((e) => { this.setState('error', this.errText(e)); });
+      U.onAuthStateChanged(auth, (u) => { this.user = u || null; if (u) this.attach(); else { this.detach(); this.setState('out'); } }, (e) => this.setState('error', this.errText(e)));
+    } catch (e) { this.started = false; this.setState('error', 'Non riesco a caricare Firebase (' + (e.message || e) + '). Controlla la connessione o eventuali blocchi su gstatic.com.'); }
+  },
+  async login() {
+    settings.set('sync_on', true);
+    await this.start();
+    if (!this.fb) return;
+    const { auth, U } = this.fb;
+    const p = new U.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
+    try { await U.signInWithPopup(auth, p, U.browserPopupRedirectResolver); }
+    catch (e) {
+      if (/popup-blocked|operation-not-supported/.test(e.code || '')) { try { await U.signInWithRedirect(auth, p, U.browserPopupRedirectResolver); } catch (e2) { this.setState('error', this.errText(e2)); } }
+      else if (!/closed-by-user|cancelled-popup/.test(e.code || '')) this.setState('error', this.errText(e));
+    }
+  },
+  async logout() {
+    settings.set('sync_on', false);
+    this.detach();
+    try { if (this.fb) await this.fb.U.signOut(this.fb.auth); } catch {}
+    this.user = null; this.setState('off');
+  },
+  errText(e) {
+    const c = (e && e.code) || '';
+    if (/permission-denied/.test(c)) return 'Firebase rifiuta l\'accesso ai dati delle ricette: va aggiunta una regola di sicurezza (vedi sotto).';
+    if (/unauthorized-domain/.test(c)) return 'Questo indirizzo non è autorizzato in Firebase → Authentication → Domini autorizzati.';
+    if (/network/.test(c)) return 'Connessione assente: riprovo appena torna la rete.';
+    return (e && e.message) || String(e);
+  },
+  col(name) { const { db, F } = this.fb; return F.collection(db, 'users', this.user.uid, name); },
+  ref(name, id) { const { db, F } = this.fb; return F.doc(db, 'users', this.user.uid, name, id); },
+  detach() { this.unsubs.forEach((u) => { try { u(); } catch {} }); this.unsubs = []; this.ready = false; this.cloudSync = {}; },
+  /* collegamento: prima istantanea = download iniziale, poi aggiornamenti in tempo reale */
+  attach() {
+    this.detach(); this.setState('syncing');
+    const { F } = this.fb;
+    let first = true;
+    const onErr = (e) => {
+      this.setState('error', this.errText(e));
+      clearTimeout(this.retry); this.retry = setTimeout(() => { if (this.user) this.attach(); }, this.denied ? 60000 : 20000);
+    };
+    this.unsubs.push(F.onSnapshot(this.col('incucina_recipes'), (snap) => {
+      this.applyRecipes(snap.docs.map((d) => d.data()), first).then(() => {
+        if (first) { first = false; this.ready = true; this.uploadMissing(); this.flush(); }
+        this.lastSync = Date.now(); this.setState('in');
+      }).catch(onErr);
+    }, onErr));
+    this.unsubs.push(F.onSnapshot(this.ref('incucina_meta', 'state'), (d) => { this.applyMeta(d.exists() ? d.data() : null); }, onErr));
+  },
+  async applyRecipes(docs, first) {
+    const local = new Map((await DB.all()).map((r) => [r.id, r]));
+    let changed = false;
+    this.applying = true;
+    try {
+      for (const c of docs) {
+        if (!c || !c.id) continue;
+        const cs = c.syncAt || c.updatedAt || 0;
+        this.cloudSync[c.id] = c.deleted ? -cs : cs;
+        const l = local.get(c.id); const ls = l ? (l.syncAt || l.updatedAt || 0) : 0;
+        if (this.pending.has(c.id) || this.dels.has(c.id)) continue;             // c'è una mia modifica in uscita
+        if (c.deleted) { if (l && ls <= cs) { await DB.del(c.id); changed = true; } continue; }
+        if (l && ls >= cs) continue;
+        const r = await this.fromCloud(c, l);
+        await DB.put(r); changed = true;
+      }
+    } finally { this.applying = false; }
+    if (changed) { await loadRecipes(); this.refreshUI(); }
+  },
+  async fromCloud(c, l) {
+    const r = clone(c); const ph = r.photos || {};
+    const lph = (l && l.photos) || {};
+    const getPhoto = async (slot) => {
+      if (l && lph[slot] === ph[slot]) { if (slot === 'cover') return l.photo; const sid = slot.slice(2); const st = l.phases.flatMap((p) => p.steps).find((x) => x.id === sid); if (st && st.photo) return st.photo; }
+      try { const d = await this.fb.F.getDoc(this.ref('incucina_photos', r.id + '__' + slot)); return d.exists() ? d.data().d || '' : ''; } catch { return ''; }
+    };
+    if (r.photo === '@cover') r.photo = await getPhoto('cover');
+    for (const p of r.phases || []) for (const st of p.steps || []) if (st.photo && st.photo.startsWith('@')) st.photo = await getPhoto(st.photo.slice(1));
+    return normalizeRecipe(r);
+  },
+  async toCloud(r) {
+    const c = JSON.parse(JSON.stringify(r)); const blobs = {}; const photos = {};
+    const take = (slot, v) => { if (v && /^data:image\//.test(v)) { blobs[slot] = v; photos[slot] = h32(v); return '@' + slot; } return v; };
+    c.photo = take('cover', c.photo);
+    (c.phases || []).forEach((p) => (p.steps || []).forEach((st) => { st.photo = take('s_' + st.id, st.photo); }));
+    c.photos = photos; delete c._nutriErr; delete c._new;
+    return { c, blobs };
+  },
+  queuePush(r) { if (!this.on()) return; this.pending.set(r.id, r); this.dels.delete(r.id); this.kick(); },
+  queueDelete(id) { if (!this.on()) return; this.pending.delete(id); this.dels.add(id); this.kick(); },
+  kick() { clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 700); },
+  async flush() {
+    if (!this.user || !this.ready) return;
+    const { F } = this.fb; const sent = settings.get('sync_ph', {});
+    try {
+      for (const id of [...this.dels]) {
+        await F.setDoc(this.ref('incucina_recipes', id), { id, deleted: true, syncAt: Date.now() });
+        for (const k of Object.keys(sent)) if (k.startsWith(id + '__')) { try { await F.deleteDoc(this.ref('incucina_photos', k)); } catch {} delete sent[k]; }
+        this.dels.delete(id);
+      }
+      for (const [id, r] of [...this.pending]) {
+        const { c, blobs } = await this.toCloud(r);
+        for (const [slot, data] of Object.entries(blobs)) {
+          const key = id + '__' + slot; if (sent[key] === c.photos[slot]) continue;
+          let d = data; if (d.length > 900000) { try { d = await compressImage(d, 900, 0.7); } catch {} }
+          await F.setDoc(this.ref('incucina_photos', key), { d, rid: id });
+          sent[key] = c.photos[slot];
+        }
+        for (const k of Object.keys(sent)) if (k.startsWith(id + '__') && !c.photos[k.slice(id.length + 2)]) { try { await F.deleteDoc(this.ref('incucina_photos', k)); } catch {} delete sent[k]; }
+        await F.setDoc(this.ref('incucina_recipes', id), c);
+        if (this.pending.get(id) === r) this.pending.delete(id);
+      }
+      settings.set('sync_ph', sent);
+      this.lastSync = Date.now(); if (this.state !== 'in') this.setState('in'); else drawSyncBox();
+    } catch (e) { settings.set('sync_ph', sent); this.setState('error', this.errText(e)); setTimeout(() => this.flush(), 15000); }
+  },
+  /* al primo collegamento: carico quello che c'è solo qui (o è più recente qui) */
+  async uploadMissing() {
+    for (const r of await DB.all()) {
+      const cs = this.cloudSync[r.id]; const ls = r.syncAt || r.updatedAt || 0;
+      if (cs == null || (cs >= 0 && ls > cs)) this.pending.set(r.id, r);
+    }
+    if (this.metaRemote === null || (+settings.get('meta_ts', 0) > (this.metaRemote || 0))) this.queueMeta(0);
+    this.flush();
+  },
+  metaRemote: undefined,
+  applyMeta(d) {
+    this.metaRemote = d ? d.updatedAt || 0 : null;
+    const lt = +settings.get('meta_ts', 0);
+    if (!d) { if (this.ready) this.queueMeta(0); return; }
+    if ((d.updatedAt || 0) <= lt) return;
+    this.applying = true;
+    try {
+      Object.entries(d.data || {}).forEach(([k, v]) => { if (this.metaKeys().has(k) || k === 'gemini_key') { if (k === 'gemini_key' && (!settings.get('sync_key', true) || !v)) return; settings.set(k, v); } });
+      settings.set('meta_ts', d.updatedAt);
+    } finally { this.applying = false; }
+    S.frigo = null; updCartBadge(); this.refreshUI();
+  },
+  queueMeta(delay = 1200) { if (!this.on()) return; clearTimeout(this.metaTimer); this.metaTimer = setTimeout(() => this.pushMeta(), delay); },
+  async pushMeta() {
+    if (!this.user || !this.ready) return;
+    const data = {}; this.metaKeys().forEach((k) => { const v = settings.get(k, undefined); if (v !== undefined && v !== null) data[k] = v; });
+    if (!settings.get('sync_key', true)) delete data.gemini_key;
+    const ts = +settings.get('meta_ts', 0) || Date.now();
+    try { await this.fb.F.setDoc(this.ref('incucina_meta', 'state'), { data: JSON.parse(JSON.stringify(data)), updatedAt: ts }); this.lastSync = Date.now(); drawSyncBox(); }
+    catch (e) { this.setState('error', this.errText(e)); }
+  },
+  /* ridisegna la pagina corrente se non stai scrivendo qualcosa */
+  refreshUI() {
+    if (S.edDirty || S.cook || $('#modal')) return;
+    const h = location.hash.replace(/^#\/?/, '').split('/')[0];
+    if (!['', 'ricette', 'r', 'spesa', 'impostazioni'].includes(h)) return;
+    const y = window.scrollY; Promise.resolve(router()).then(() => window.scrollTo(0, y));
+  }
+};
+window.__cloud = Cloud;
+function updSyncDot() { const a = $('.nav a[data-nav="impostazioni"]'); if (a) a.classList.toggle('syncerr', Cloud.state === 'error'); }
+function syncBoxHtml() {
+  const c = Cloud; const u = c.user;
+  const rule = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}`;
+  if (!c.on() || c.state === 'off') return `<p style="margin:0">Accedi con il tuo account Google (lo stesso di GalleggiApp) e ritrovi ricette, foto, lista della spesa ed esigenze di casa su tutti i tuoi dispositivi: telefono, PC, tablet.</p>
+    <button class="btn primary" data-act="sync-login">${ic('users')} Accedi con Google</button>
+    <p class="small dim" style="margin:0">Le ricette che hai già su questo dispositivo vengono caricate automaticamente. Senza accesso l'app funziona come prima, solo su questo dispositivo.</p>`;
+  if (c.state === 'loading' && !u) return `<div class="row dim">${ic('refresh', 'spin').replace('<svg', '<svg style="width:18px;height:18px"')} Collegamento a Firebase…</div><button class="btn sm ghost" data-act="sync-login">Accedi con Google</button>`;
+  if (!u) return `${c.state === 'error' ? `<div class="notice">${esc(c.error)}</div>` : ''}<p style="margin:0">Non sei collegato.</p><button class="btn primary" data-act="sync-login">${ic('users')} Accedi con Google</button><button class="btn sm ghost" data-act="sync-logout">Disattiva la sincronizzazione</button>`;
+  return `<div class="row" style="flex-wrap:nowrap">${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" style="width:36px;height:36px;border-radius:50%" referrerpolicy="no-referrer">` : `<span style="width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--panel-2);color:var(--accent);flex:none">${ic('users').replace('<svg', '<svg style="width:20px;height:20px"')}</span>`}<div style="flex:1;min-width:0"><b>${esc(u.displayName || 'Collegato')}</b><div class="small dim" style="overflow:hidden;text-overflow:ellipsis">${esc(u.email || '')}</div></div></div>
+    ${c.state === 'error' ? `<div class="notice">${esc(c.error)}${c.denied ? `<div class="small" style="margin-top:6px">In <a href="https://console.firebase.google.com/project/${FB_CFG.projectId}/firestore/rules" target="_blank" rel="noopener">Firebase → Firestore → Regole</a> le regole devono permettere a ogni utente di leggere e scrivere i propri dati, così:</div><pre class="rulebox">${esc(rule)}</pre><button class="btn sm" data-act="sync-copyrule">${ic('copy')} Copia la regola</button>` : ''}</div>`
+      : `<p class="small" style="margin:0;color:var(--ok)">${c.state === 'syncing' ? 'Sincronizzo…' : '✓ Sincronizzato'} · ${S.recipes.length} ricette${c.lastSync ? ' · ' + new Date(c.lastSync).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : ''}${c.pending.size ? ' · ' + c.pending.size + ' in invio' : ''}</p>`}
+    <label class="small" style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" id="syncKey" ${settings.get('sync_key', true) ? 'checked' : ''}> Porta anche la chiave AI sugli altri dispositivi (resta nel tuo spazio privato su Firebase)</label>
+    <div class="row"><button class="btn sm" data-act="sync-now">${ic('refresh')} Sincronizza ora</button><button class="btn sm ghost" data-act="sync-logout">Esci</button></div>`;
+}
+function drawSyncBox() { const b = $('#syncBox'); if (b) { b.innerHTML = syncBoxHtml(); const k = $('#syncKey'); if (k) k.onchange = () => { settings.set('sync_key', k.checked); Cloud.queueMeta(); }; } }
 
 /* ---------- formato ricetta ----------
    Struttura unica di ogni ricetta dell'app:
@@ -2328,6 +2565,7 @@ function renderHome(app) {
     <div class="search" style="margin-top:16px">${ic('search')}<input type="search" id="hq" placeholder="Cerca nel ricettario" enterkeyhint="search"></div>
     ${!AI.has() ? `<div class="notice" style="margin-top:12px"><b>Primo passo:</b> inserisci la <a href="#/impostazioni">chiave AI gratuita</a>, serve per scansionare, importare video e avere idee.</div>` : ''}
 
+    ${!Cloud.on() && !settings.get('sync_tip_off', false) ? `<div class="synctip">${ic('refresh')}<span><b>Le tue ricette anche sul PC?</b><small>Accedi con Google e ritrovi tutto su ogni dispositivo.</small></span><button class="btn sm primary" data-act="sync-go">Attiva</button><button class="iconbtn sm" data-act="sync-tip-off" aria-label="Chiudi">${ic('x')}</button></div>` : ''}
     <div class="hsec"><span class="n">1</span>Trova un'idea</div>
     <div class="htiles">
       <a href="#/scansiona" class="ht big">${ic('barcode')}<span><b>Scansiona un prodotto</b><small>Codice a barre o foto della confezione: ti dico cosa cucinarci</small></span></a>
@@ -3778,12 +4016,17 @@ function renderSettings(app) {
 
   <div class="card stack" style="margin-top:16px">
     <h2>Le tue ricette</h2>
-    <p style="margin:0" class="small">Le ricette sono salvate nel browser di questo dispositivo (${S.recipes.length} ${S.recipes.length === 1 ? 'ricetta' : 'ricette'}). Per portarle su un altro dispositivo, o per sicurezza, fai un backup e importalo dall'altra parte.</p>
+    <p style="margin:0" class="small">${Cloud.user ? 'Le ricette sono salvate su questo dispositivo e sincronizzate con il tuo account' : 'Le ricette sono salvate nel browser di questo dispositivo'} (${S.recipes.length} ${S.recipes.length === 1 ? 'ricetta' : 'ricette'}). ${Cloud.user ? 'Il backup resta utile come copia di sicurezza.' : 'Per averle su altri dispositivi attiva la sincronizzazione qui sopra, oppure fai un backup e importalo dall\'altra parte.'}</p>
     <div class="row">
       <button class="btn" data-act="bk-export">${ic('dl')} Esporta backup</button>
       <label class="btn" style="position:relative">${ic('ul')} Importa backup<input type="file" accept=".json,application/json" id="bkIn" style="position:absolute;inset:0;opacity:0"></label>
     </div>
     <button class="btn ghost danger" data-act="bk-wipe">${ic('trash')} Cancella tutte le ricette</button>
+  </div>
+
+  <div class="card stack" style="margin-top:16px" id="syncCard">
+    <h2>${ic('refresh').replace('<svg', '<svg style="width:20px;height:20px;color:var(--accent);vertical-align:-3px"')} Sincronizza tra dispositivi</h2>
+    <div class="stack" id="syncBox"></div>
   </div>
 
   <div class="card stack" style="margin-top:16px">
@@ -3821,6 +4064,7 @@ function renderSettings(app) {
     <p class="small dim" style="margin-top:12px">In Cucina con Paolo · un progetto GPverse</p>
   </div>`;
   $('#bkIn').addEventListener('change', importBackup);
+  drawSyncBox(); if (S.scrollSync) { S.scrollSync = false; $('#syncCard').scrollIntoView({ block: 'start' }); }
   drawUpdBoxes(); drawAiLog();
   $('#kcalIn').addEventListener('change', (e) => { const v = Math.round(+e.target.value); if (v >= 1000 && v <= 5000) { settings.set('kcal_ref', v); toast('Fabbisogno: ' + v + ' kcal'); } else e.target.value = kcalRef(); });
   $('#autoNutri').addEventListener('change', (e) => settings.set('auto_nutri', e.target.checked));
@@ -4075,12 +4319,18 @@ const ACT = {
     exitCook();
   },
   // impostazioni
+  'sync-login': () => Cloud.login(),
+  'sync-logout': async () => { if (!(await confirmBox('Uscire dalla sincronizzazione? Le ricette restano su questo dispositivo.', 'Esci'))) return; await Cloud.logout(); },
+  'sync-now': async () => { if (!Cloud.user) return; Cloud.setState('syncing'); await Cloud.uploadMissing(); Cloud.attach(); },
+  'sync-go': () => { S.scrollSync = true; location.hash = '#/impostazioni'; },
+  'sync-tip-off': () => { settings.set('sync_tip_off', true); renderHome($('#app')); },
+  'sync-copyrule': async () => { try { await navigator.clipboard.writeText($('.rulebox').textContent); toast('Regola copiata'); } catch { toast('Seleziona e copia il testo'); } },
   'ai-reset': (a, e) => { e.preventDefault(); settings.set('gemini_quota', {}); settings.set('gemini_slow', {}); settings.set('gemini_models', null); toast('Tutti i modelli verranno riprovati'); renderSettings($('#app')); },
   'key-show': () => { const i = $('#keyIn'); i.type = i.type === 'password' ? 'text' : 'password'; },
   'key-save': () => { const v = $('#keyIn').value.trim(); settings.set('gemini_key', v); settings.set('gemini_models', null); settings.set('gemini_slow', {}); settings.set('gemini_quota', {}); settings.set('ai_notools', 0); if (v) testKey(); else toast('Chiave rimossa'); },
   'key-del': () => { settings.set('gemini_key', ''); settings.set('gemini_models', null); renderSettings($('#app')); toast('Chiave rimossa'); },
   'bk-export': () => { downloadFile('incucina-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify({ app: 'incucina', version: APP_VERSION, date: Date.now(), recipes: S.recipes })); },
-  'bk-wipe': async () => { if (!(await confirmBox('Cancellare TUTTE le ricette da questo dispositivo? Fai prima un backup.', 'Cancella tutto', true))) return; await DB.clear(); await loadRecipes(); renderSettings($('#app')); toast('Ricette cancellate'); },
+  'bk-wipe': async () => { if (!(await confirmBox(Cloud.user ? 'Cancellare TUTTE le ricette? La sincronizzazione è attiva: spariranno da tutti i tuoi dispositivi. Fai prima un backup.' : 'Cancellare TUTTE le ricette da questo dispositivo? Fai prima un backup.', 'Cancella tutto', true))) return; await DB.clear(); await loadRecipes(); renderSettings($('#app')); toast('Ricette cancellate'); },
   'theme': (a) => { settings.set('theme', a.dataset.v); applyTheme(); renderSettings($('#app')); }
 };
 document.addEventListener('click', (e) => {
@@ -4149,6 +4399,7 @@ window.addEventListener('beforeunload', (e) => { if (S.edDirty) { e.preventDefau
   applyTheme();
   markVer();
   try { await loadRecipes(); } catch (e) { $('#app').innerHTML = `<div class="empty">Il browser non permette di salvare dati (modalità privata?). ${esc(e.message)}</div>`; }
+  if (Cloud.on()) Cloud.start();
   // link condiviso da altre app (Condividi → In Cucina)
   const qs = new URLSearchParams(location.search);
   const shared = [qs.get('url'), qs.get('text'), qs.get('title')].filter(Boolean).join(' ');

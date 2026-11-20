@@ -31,8 +31,13 @@ Le funzioni di conversione, Svuota frigo e Aiuto usano Google Gemini con una chi
 (aistudio.google.com/apikey), salvata solo sul dispositivo. Senza chiave l'app importa comunque dai siti
 di ricette che pubblicano i dati in formato standard.
 
-## Dati
-Le ricette sono salvate nel browser del dispositivo. Usa Impostazioni → Esporta/Importa backup per spostarle.
+## Dati e sincronizzazione
+Le ricette sono salvate nel browser del dispositivo (funziona anche offline). In Altro → Sincronizza tra dispositivi
+si accede con Google allo stesso progetto Firebase di GalleggiApp (benzinapp-f4763): ricette in
+users/{uid}/incucina_recipes, foto in users/{uid}/incucina_photos (una per documento), lista della spesa,
+esigenze di casa e preferenze in users/{uid}/incucina_meta/state. Aggiornamenti in tempo reale, vince la modifica più recente.
+Regola Firestore necessaria: `match /users/{userId}/{document=**} { allow read, write: if request.auth != null && request.auth.uid == userId; }`.
+Il backup (Altro → Esporta/Importa) resta disponibile come copia di sicurezza.
 
 Versione corrente e cronologia: in cima a `index.html` e in Impostazioni.
 `version.json` contiene l'ultima versione pubblicata: l'app lo legge per "Cerca aggiornamenti" (va aggiornato a ogni rilascio insieme ad `APP_VERSION`).

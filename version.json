@@ -1,9 +1,9 @@
 {
-  "version": "1.12.1",
-  "date": "18 novembre 2026",
+  "version": "1.13.0",
+  "date": "20 novembre 2026",
   "items": [
-    "Corretta la ricerca che restava ferma per minuti: Google ha ridotto il piano gratuito (circa 20 richieste al giorno sui modelli Flash) e dismesso alcuni modelli. Ora per idee, proposte e valori l'app usa i modelli Flash-Lite (circa 500 richieste al giorno) e il nuovo Gemini 4 Hydrogen, e tiene i Flash per i video.",
-    "I modelli con le richieste di oggi finite vengono saltati fino alla mattina dopo; se il primo modello tarda, l'app ne interroga subito un secondo e usa la risposta più veloce.",
-    "Durante la ricerca vedi quale modello sta rispondendo e perché passa a un altro; in Altro c'è l'elenco dei modelli saltati con \"riprova tutti\"."
+    "Sincronizzazione tra dispositivi: in Altro accedi con Google (stesso account e stesso spazio Firebase di GalleggiApp) e ritrovi ricette, foto, lista della spesa, esigenze di casa, dispensa e preferenze su telefono, PC e tablet, aggiornate in tempo reale.",
+    "L'app continua a funzionare anche offline: le modifiche fatte senza rete vengono inviate appena torna la connessione, e vince sempre la più recente.",
+    "Le ricette già presenti sul telefono vengono caricate da sole al primo accesso; si può portare anche la chiave AI sugli altri dispositivi, così sul PC non va reinserita."
   ]
 }
